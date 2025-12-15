@@ -3,6 +3,8 @@ import express from "express";
 //等同与const express = require('express'); require("express")是node.js语法 用于倒入express模块
 // const express 将倒入的模块赋值给express变量 是个框架的顶级函数，用于创建一个express应用
 
+//引入路由模块实例 赋值给变量notesRoutes 
+import notesRoutes from "./routes/notesRoutes.js"
 
 // express() creates an instance of an express application 
 const app = express();  //执行上面创建的express函数，返回一个express应用程序对象(app object)，通常命名为app
@@ -31,27 +33,44 @@ const app = express();  //执行上面创建的express函数，返回一个expre
 
 //设置配置 使用app.set(KEY, VALUE)来设置配置 KEY是配置项，VALUE是配置值 比如app.set("port", 3000);
 
+
+//express.js路由有两种组织方式
+//1. 直接使用express实例的顶级对象app来写 app.get()、app.post()等方法来定义路由
+//2. 使用express.Router()来创建一个路由对象，然后使用该对象来定义路由 模块化陆由modular routing模式
+//通过app.use()将router实例作为一个中间件挂在到app实例上，这样就可以在app实例上使用router实例定义的路由了
+
+
+//方法1
 //第二个参数是回调函数，当服务器启动时，会执行这个回调函数 函数有两个参数，
 // req是客户端发来的请求对象，包含了请求的所有信息（例如请求头，查询参数等）第二个参数是响应对象
 // res是服务器要发回的相应对象 用于发送数据或状态码给客户端
-app.get("/api/notes", (req,res) => {
-    res.status(200).send("you got 10 notes");
-});
+// app.get("/api/notes", (req,res) => {
+//     res.status(200).send("大岛优子和我结婚");
+// });
 
 // app.get("/api/notes", function(req, res)
 // {
 //     app.status(200).send("you got 10 notes")
 // });
 
+//endpoint is a combinaison of a url + http method that lets the client interact with a specific resource on the server. 
 
-app.put(/api/notes/, function(req,res){
-    res.putfsdfsfdsfdsf
-});
+// app.post("/api/notes", (req, res)=>{
+//     res.status(201).json({message:"Note created successfully!"})
 
-app.put(/api/notes, (req, res)=>{
-    res.sfdksfjdksjfdkjfk
+// });
 
-});
+// app.put("/api/notes/", function(req,res){
+//     res.status(200).json({message:"Note updated successfully!"})
+// });
+
+//方法2   use方法用来挂载中间件函数 两个参数 当客户端请求的url与中间件函数的路径匹配时，中间件函数会被执行
+app.use("/api/notes", notesRoutes);  
+//notesRoutes 是什么？ 它是从 notesRoutes.js 文件中导入的一个 router 实例（一个路由中间件）
+//Express 会将 notesRoutes 模块中定义的所有路由路径，都自动加上 /api/notes 这个前缀
+// app.use("/api/product", productRoutes);
+// app.use("/api/user", userRoutes);
+// app.use("/api/auth", authRoutes);
 
 
 //listen() method is used to bind and listen the connections on the specified host and port, console.log() is used to print the message on the console once the server starts
@@ -78,7 +97,8 @@ app.listen(5001, ()=> {
 // node server.js 运行server.js文件  也可以 npm run <key> 这里是'dev'
 // npm run xxx 里的 xxx 必须和 pacakage.json里面scripts 里的 key 一模一样。 value就是执行的命令 这里是 'node server.js' 下次执行 npm run dev 就会自动执行 node server.js
 //github 配置传，依赖不传；规则传，秘密不传。
-
+//npm install nodemon -D 安装nodemon  -D 是 --save-dev 的简写，表示这个包是开发依赖，只在开发环境中使用，不会在生产环境中使用
+//使用nodemon启动服务器，当文件发生变化时，会自动重启服务器 大大提高了开发效率 需要在script 里面改dev的命令为 nodemon server.js
 
 
 //status code   1xx informational   2xx success(200 ok, 201 Created)  3xx redirection(300 rediction, 301 moved permanently.change from http to https)  
