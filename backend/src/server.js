@@ -6,6 +6,18 @@ import express from "express";
 //引入路由模块实例 赋值给变量notesRoutes 
 import notesRoutes from "./routes/notesRoutes.js"
 
+
+//在 ES Modules (JS 模块) 中，默认导出 (Default) 和 命名导出 (Named) 是两套不同的路标：
+// 加在结尾的export default X：像是一个房间只有一个大门，你进来直接就能带走 X。导入时写 import X from ...。
+// 加在定义前面的export const X：像是房间里有很多小盒子，你必须指名道姓要拿哪个盒子。导入时写 import { X } from ...。
+import {connectDB} from "./config/db.js"
+
+
+import dotenv from "dotenv"
+
+dotenv.config(); //加载.env文件中的环境变量
+
+
 // express() creates an instance of an express application 
 const app = express();  //执行上面创建的express函数，返回一个express应用程序对象(app object)，通常命名为app
 //这个app就是我整个web应用的本体。所有服务器功能，配置，路由都通过这个app对象来设置
@@ -33,6 +45,18 @@ const app = express();  //执行上面创建的express函数，返回一个expre
 
 //设置配置 使用app.set(KEY, VALUE)来设置配置 KEY是配置项，VALUE是配置值 比如app.set("port", 3000);
 
+const PORT = process.env.PORT || 5001; //process.env.PORT 是环境变量，如果环境变量中没有设置PORT，则使用默认值5001
+connectDB();
+//middleware 
+// 简单来说，app.use(express.json()) 是一个内置的中间件，它的作用是让你的 Express 服务器能够读懂客户端发送过来的 JSON 数据。
+// 如果不写这一行，当你通过 Postman 或前端发送一个 POST 请求（带 JSON Body）时，后端代码里的 req.body 将会是 undefined。
+// 🔍 为什么需要它？（原理拆解）
+//     数据的本质：当你在 Postman 的 Body 中选择 raw -> JSON 发送数据时，数据是以“字符串”的形式在网络上传输的。
+//     解析过程：express.json() 会监听进入服务器的请求。如果它发现请求头里的 Content-Type 是 application/json，它就会：
+//         拦截这个请求。
+//         把那一串 JSON 字符串“翻译”回 JavaScript 对象。
+//         把它挂载到 req.body 上，供你后续使用。
+app.use(express.json()); 
 
 //express.js路由有两种组织方式
 //1. 直接使用express实例的顶级对象app来写 app.get()、app.post()等方法来定义路由
@@ -76,8 +100,8 @@ app.use("/api/notes", notesRoutes);
 //listen() method is used to bind and listen the connections on the specified host and port, console.log() is used to print the message on the console once the server starts
 //启动 服务器，并监听指定的端口，当服务器启动时，会在控制台打印出一条消息
 //第二个参数是回调函数，当服务器启动时，会执行这个回调函数 这个函数不需要任何参数所以是空括号
-app.listen(5001, ()=> {
-    console.log("Server started on port 5001")  
+app.listen(PORT, ()=> {
+    console.log("Server started on port", PORT);
 });
 // app.listen(5001, function(){
 //     console.log("Server started on port 5001")
@@ -85,7 +109,7 @@ app.listen(5001, ()=> {
 
 
 
-
+//mongodb+srv://leochen:<db_password>@cluster0.7zqa0uq.mongodb.net/?appName=Cluster0
 
 
 
@@ -99,6 +123,8 @@ app.listen(5001, ()=> {
 //github 配置传，依赖不传；规则传，秘密不传。
 //npm install nodemon -D 安装nodemon  -D 是 --save-dev 的简写，表示这个包是开发依赖，只在开发环境中使用，不会在生产环境中使用
 //使用nodemon启动服务器，当文件发生变化时，会自动重启服务器 大大提高了开发效率 需要在script 里面改dev的命令为 nodemon server.js
+//npm install mongoose@7.0.3 用于更简单规范地操作mongodb 连接node.js和mongodb的桥梁
+//npm install dotenv   用于加载.env文件中的环境变量
 
 
 //status code   1xx informational   2xx success(200 ok, 201 Created)  3xx redirection(300 rediction, 301 moved permanently.change from http to https)  

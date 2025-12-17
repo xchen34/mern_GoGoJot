@@ -1,5 +1,5 @@
 import express from "express";
-import {getAllNotes, createNote, updateNote, deleteNote} from '../controllers/notesControllers.js'
+import {getAllNotes, getNoteById, createNote, updateNote, deleteNote} from '../controllers/notesControllers.js'
 const router = express.Router();
 
 //controllers文件夹下的文件可以专门用来写路由的回调函数 即处理请求的逻辑单独抽离到controllers
@@ -30,6 +30,7 @@ const router = express.Router();
 
 //不能这样写router.get("/", getAllNotes(req, res)); 因为她会导致回调函数立即执行 而不是等请求到了才执行
 router.get("/", getAllNotes);
+router.get("/:id", getNoteById);
 router.post("/", createNote);
 router.put("/:id", updateNote);
 router.delete("/:id", deleteNote);
