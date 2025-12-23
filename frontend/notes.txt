@@ -13,6 +13,12 @@ npm run dev
 ES modules
 JSX / TS
 自动处理依赖
+
+使用到的网页：
+for fronted:Tailwind doc, daisy UI(npm), reac-hot-toast
+for backend: Postman下载, upstash(redis), Mongodb atlas, 
+使用到的vscode extension: ES7+rEACT/Redux/React-Native snippets
+Tailwind CSS Intellisense
  
  npm create vite@latest .  
  选择react, javascript 
@@ -26,3 +32,90 @@ JSX / TS
  使生效  source ~/.zshrc 
  查看  nvm --version*
 
+rafce   （ES7+ React/Redux/React-Native Snippets功能）
+r  -> react
+a  -> arrow function
+f  -> function
+c  -> component
+e  -> export
+在.jsx  .tsx文件中输入rafce会自动生成代码片段
+
+npm i react-router 用于定义不同URL来显示不同内容 导航的
+npm i react-hot-toast 弹窗通知工具
+
+安装tailwind   https://v3.tailwindcss.com/docs/guides/vite   选择vite framework复制她的命令 记得在fronted folder
+npm install -D tailwindcss@3 postcss autoprefixer
+npx tailwindcss init -p
+更新tailwind.config.js  也是复制 
+更新index.css 也是复制
+
+npm i -D daisyui@v4 
+ npm i lucide-react  
+ npm i axios
+
+名字	类型	导入方式	为什么？
+Toaster	组件 (Component)	import { Toaster }	它是库里的一个特定工具。
+toast	函数 (Function)	import toast	它是库的默认核心功能。
+App	组件 (Component)	import App	因为你写了 export default App。
+
+具名导出（Named Exports）与默认导出（Default Exports）的区别，以及组件（Component）与函数（Function）**的区别。
+A. 具名导出 (Named Export) → 必须打 { }
+
+库的代码里写的是 export const Toaster = ...。
+
+    这种方式允许一个文件导出很多个东西。
+
+    你引用时必须点名道姓，且名字必须用大括号包起来。
+
+    例子：import { Toaster, useToaster } from "react-hot-toast"。
+
+B. 默认导出 (Default Export) → 不打 { }
+
+库的代码里写的是 export default toast。
+
+    一个文件只能有一个默认导出。
+
+    你引用时可以随便起名字（虽然通常还是叫 toast），且不需要大括号。
+
+    例子：import myToast from "react-hot-toast"（这依然能指向那个函数）
+
+     一般默认导出 (Default Export)：通常是该文件的“主角”。一个文件只能有一个主角。
+
+    语法： import App from './App'
+
+具名导出 (Named Export)：通常是该文件的“配角”或“工具包”。一个文件可以有很多配角。
+
+    语法： import { Toaster, toast } from 'react-hot-toast'
+
+    React 核心：import React, { useState, useEffect } from 'react' (React 是主角，Hook 是配角)。
+
+    React Router：全都是配角 import { Routes, Route, Link } from 'react-router-dom'
+
+
+    2. Component (组件) 就是标签吗？
+
+答案是：是的，但它是“自定义”的超级标签。
+
+    HTML 标签：比如 <div>, <h1>, <button>。它们是浏览器自带的，全部是小写字母开头。
+
+    React 组件：比如 <App />, <Toaster />, <HomePage />。它们是你或者库作者写的 JavaScript 函数，必须以大写字母开头。
+
+为什么叫“超级标签”？
+
+因为 HTML 标签只能展示简单的内容，而 Component (组件) 内部可以包含：
+
+    自己的逻辑（比如点击后算数）。
+
+    自己的状态（比如记住你输入了什么）。
+
+    其他标签（一个组件可以包裹成千上万个 div）。
+
+3. Toaster 组件就是写成 <Toaster /> 吗？
+
+没错！
+
+在 React 里，只要一个函数返回的是 JSX（看起来像 HTML 的代码），它就是一个组件。你可以像使用 HTML 标签一样使用它：
+
+    如果它不需要包裹内容：写成自闭合 <Toaster />。
+
+    如果它需要包裹内容：写成 <BrowserRouter> ... </BrowserRouter>。
