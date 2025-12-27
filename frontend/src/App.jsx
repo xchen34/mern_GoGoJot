@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 
 const App = () => {
   return (
-    <div data-theme="forest">
+    <div className="relative h-full w-full">
       {/* <button className="btn">Default</button>
       <button className="btn btn-primary">Primary</button>
       <button className="btn btn-secondary">Secondary</button>
@@ -16,6 +16,8 @@ const App = () => {
       <button className="btn btn-neutral">Neutral</button>
        <button className="btn btn-ghost">Ghost</button>
         <button className="btn btn-link">Link</button> */}
+        <div className="absolute inset-0 -z-10 h-full w-full items-center px-5 py-24 [background:radial-gradien
+        (125%_125%_at_50%_10%,#000-60%m#000FF9D40_100%)]" />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/create" element={<CreatePage/>} />

@@ -3,6 +3,9 @@ import express from "express";
 //等同与const express = require('express'); require("express")是node.js语法 用于倒入express模块
 // const express 将倒入的模块赋值给express变量 是个框架的顶级函数，用于创建一个express应用
 
+import cors from "cors"; 
+import dotenv from "dotenv"
+
 //引入路由模块实例 赋值给变量notesRoutes 
 import notesRoutes from "./routes/notesRoutes.js"
 
@@ -14,7 +17,8 @@ import rateLimiter from "./middleware/rateLimiter.js";
 import {connectDB} from "./config/db.js"
 
 
-import dotenv from "dotenv"
+
+
 
 dotenv.config(); //加载.env文件中的环境变量
 
@@ -61,9 +65,17 @@ connectDB().then(() => {
 //         拦截这个请求。
 //         把那一串 JSON 字符串“翻译”回 JavaScript 对象。
 //         把它挂载到 req.body 上，供你后续使用。
+
+app.use(cors({
+    origin:"http://localhost:5173",
+})); 
+
 app.use(express.json());  //this middleware will parse json bodies to allow acces to them in req.body
 
 app.use(rateLimiter);
+
+
+
 //other simple customized middleware
 // app.use((req,res,next)=>{
 //     console.log(`Request method is ${req.method} and Request URL is ${req.url}`);   //有变量需要用反引号 在数字1的旁边
@@ -143,6 +155,7 @@ app.use("/api/notes", notesRoutes);
 //npm i @upstash/ratelimit@2.0.5 @upstash/redis@1.34.9 
 //mode.js版本太低导致upstash fetch报错，因为低版本没有内置fetch  可以升级或者安装fetch  npm install node-fetch
 //然后在ratelimit.js 引入fetch 
+// nmp i cors 
 
 //status code   1xx informational   2xx success(200 ok, 201 Created)  3xx redirection(300 rediction, 301 moved permanently.change from http to https)  
 // 4xx client error (400 bad request, 404 not found, 401 unauthorized, 403 forbidden, 429 too many requests)  
