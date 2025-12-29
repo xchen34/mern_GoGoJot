@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import Navbar from "../components/Navbar"
 import RateLimitedUI from '../components/RateLimitedUI';
 import NoteCard from '../components/NoteCard';
-import axios from "axios";
+//import axios from "axios";
+import api from "../lib/axios";  //取代一次次写完整的axios.get那些url 大项目容易出错 普遍做法是单独写一个axios.js 也便于修改
 import toast from "react-hot-toast"
 const HomePage = () => {
   //数组解构 useState(true)返回的是一个数组 [true, function] 
@@ -20,7 +21,11 @@ const HomePage = () => {
       try{
         // const res = await fetch("http://localhost:5001/api/notes");
         // const data = await res.json();
-        const res = await axios.get("http://localhost:5001/api/notes");
+        //上面的步骤可以用axios简化写成
+        //const res = await axios.get("http://localhost:5001/api/notes");
+        // 单独使用axios.js的instance来写如下
+        const res = await api.get("/notes");
+        
         console.log(res.data);
         setNotes(res.data);
         setIsRateLimited(false);
