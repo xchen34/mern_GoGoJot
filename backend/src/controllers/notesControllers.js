@@ -93,7 +93,6 @@ export async function deleteNote(req, res){
         res.status(200).json({message:"delete with succusss鸭鸭鸭"});
     }catch(error){
         console.error("Error in deleteNote controller鸭鸭鸭");
-        res.status(500).json({message:"Internal server error鸭鸭鸭"
-    });
+        res.status(500).json({message:"Internal server error鸭鸭鸭"});
     }
 }
