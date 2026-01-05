@@ -5,6 +5,8 @@ import NoteCard from '../components/NoteCard';
 //import axios from "axios";
 import api from "../lib/axios";  //取代一次次写完整的axios.get那些url 大项目容易出错 普遍做法是单独写一个axios.js 也便于修改
 import toast from "react-hot-toast"
+import NotesNotFound from "../components/NotesNotFound";
+
 const HomePage = () => {
   //数组解构 useState(true)返回的是一个数组 [true, function] 
   // result[0]是当前值 [1]是修改这个值的函数 等价写法为
@@ -56,11 +58,20 @@ const HomePage = () => {
       <div className="max-w-7xl mx-auto p-4 mt-6">
         {loading && <div className="text-center text-primary py-10">Loading notes...</div>}
 
+        {notes.length === 0 && !isRateLimited && <NotesNotFound />}
+
         {notes.length > 0 && !isRateLimited && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ">
-            {notes.map((note => (
-              <NoteCard key={note._id} note ={note} setNotes={setNotes}/>
-            )))}
+          <div>
+            {notes.length > 50 && (
+              <div className="alert alert-info mb-4">
+                <span>Showing 50 of {notes.length} notes</span>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 ">
+              {notes.slice(0, 50).map((note => (
+                <NoteCard key={note._id} note ={note} setNotes={setNotes}/>
+              )))}
+            </div>
           </div>
         )}
     

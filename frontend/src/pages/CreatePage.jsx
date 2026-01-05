@@ -13,11 +13,25 @@ const CreatePage = () => {
   
   const navigate = useNavigate()
   
+  const MAX_TITLE_LENGTH = 100;
+  const MAX_CONTENT_LENGTH = 5000;
+  
   const handleSubmit = async (e) => {
     e.preventDefault();  //防止浏览器刷新 你能看到console React接管逻辑
     
     if (!title.trim() || !content.trim()){   //去掉title前后的空格再检查空 防止纯空格被识别成true
       toast.error("ALl fields are required");
+      return;
+    }
+    
+    if (title.length > MAX_TITLE_LENGTH) {
+      toast.error(`Title must be less than ${MAX_TITLE_LENGTH} characters`);
+      return;
+    }
+
+    if (content.length > MAX_CONTENT_LENGTH) {
+      toast.error(`Content must be less than ${MAX_CONTENT_LENGTH} characters`);
+      return;
     }
     setLoading(true)   //setLoading(true) 表示：前端正在等待与后端的交互结果（请求进行中）
     try{
@@ -78,23 +92,31 @@ const CreatePage = () => {
                 <div className='form-control mb-4'>
                   <label className='label'>
                     <span className='label-text'>Title</span>
+                    <span className='label-text-alt text-base-content/50'>
+                      {title.length}/{MAX_TITLE_LENGTH}
+                    </span>
                   </label>
                   <input 
                     type="text"
                     placeholder='Note Title'
                     className='input input-bordered'
                     value={title}
+                    maxLength={MAX_TITLE_LENGTH}
                     onChange={(e) => setTitle(e.target.value)}
                     />
                 </div>
                 <div className='form-control mb-4'>
                   <label className='label'>
                     <span className='label-text'>Content</span>
+                    <span className='label-text-alt text-base-content/50'>
+                      {content.length}/{MAX_CONTENT_LENGTH}
+                    </span>
                   </label>
                   <textarea
                     placeholder='Write your note here...'
                     className='textarea textarea-bordered h-32'
                     value={content}
+                    maxLength={MAX_CONTENT_LENGTH}
                     onChange={(e) => setContent(e.target.value)}
                     />
                 </div>

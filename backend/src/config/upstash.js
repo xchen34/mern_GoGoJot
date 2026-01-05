@@ -13,7 +13,7 @@ dotenv.config(); //加载.env文件中的环境变量
 //create a ratelimiter that allows 10 req per 20s 
 const ratelimit = new Ratelimit({
     redis: Redis.fromEnv(),  //从.env文件中获取redis配置 连接redis
-    limiter: Ratelimit.slidingWindow(5, "10 s"),  //滑动窗口限流器，每20秒最多10个请求
+    limiter: Ratelimit.slidingWindow(20, "10 s"),  //滑动窗口限流器，每20秒最多10个请求
 });
 
 
