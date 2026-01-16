@@ -8,7 +8,6 @@ import dotenv from "dotenv"
 
 //引入路由模块实例 赋值给变量notesRoutes 
 import notesRoutes from "./routes/notesRoutes.js"
-import authRoutes from "./routes/notesRoutes.js"
 import rateLimiter from "./middleware/rateLimiter.js";
 
 //在 ES Modules (JS 模块) 中，默认导出 (Default) 和 命名导出 (Named) 是两套不同的路标：
@@ -93,7 +92,7 @@ app.use(express.json());  //this middleware will parse json bodies to allow acce
 
 app.use(rateLimiter);
 
-app.use("/api/auth", authRoutes); //挂载认证路由中间件 处理/auth开头的路由请求
+app.use("/api/auth", notesRoutes); //挂载认证路由中间件 处理/auth开头的路由请求
 
 //other simple customized middleware
 // app.use((req,res,next)=>{

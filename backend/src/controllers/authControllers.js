@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
-import User from "../models/user.js";
+import User from "../models/User.js";
 import { signAccessToken, signRefreshToken } from "../config/jwt.js";
 import { z } from "zod"; //用于验证输入数据
 
