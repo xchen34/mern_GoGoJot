@@ -23,12 +23,21 @@ const loginSchema = z.object({
     password: z.string().min(8).max(72),
 });
 
+
+const updateProfileSchema = z.object({
+    name: z.string().max(50).optional(),
+    email: z.string().email().optional(),
+    oldPassword: z.string().min(8).max(72).optional(),
+    newPassword: z.string().min(8).max(72).optional(),
+});
+
+
 //当用户登录或刷新 Token 时，调用此函数把长效的 refreshToken 种在浏览器里。
 //res.cookie()第一个参数是
 const setRefreshCookie = (res, token) => {
     res.cookie("refreshToken", token, {
         httpOnly: true, //// 关键安全设置：防止前端 JS 代码 (如 XSS 攻击) 访问此 Cookie
-        secure: true,// 仅允许通过 HTTPS 传输 (开发环境下如果用 HTTP 可能会导致无法设置，通常需配合环境判断)
+        secure: process.env.NODE_ENV === "production",// 仅允许通过 HTTPS 传输 (开发环境下如果用 HTTP 可能会导致无法设置，通常需配合环境判断)
         sameSite: "strict",// 防止 CSRF 攻击，要求请求必须来自同一站点
         maxAge: 7 * 24 * 60 * 60 * 1000 // cookie有效期7days ms毫秒为单位
     });
@@ -49,17 +58,18 @@ export const guest = async (req, res) => {
         const refreshToken = signRefreshToken(payload);
 
         setRefreshCookie(res, refreshToken);
-        console.log("✅ Guest login successful for ID:", guestId);
+        console.log("Guest login successful for ID:", guestId);
         res.json({ accessToken, mode: "guest" });
     } catch (error) {
-        console.error("❌ Guest Login Error:", error);
+        console.error("Guest Login Error:", error);
         res.status(500).json({ message: "Internal Server Error during Guest Login" });
     }
 };
 
 export const signup = async (req, res) => {
-    const parsed = signupSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
+    try{
+        const parsed = signupSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0].message });
 
     const { email, password, name = "" } = parsed.data;
     const existing = await User.findOne({ email });
@@ -73,11 +83,15 @@ export const signup = async (req, res) => {
     const refreshToken = signRefreshToken(payload);
     setRefreshCookie(res, refreshToken);
     res.status(201).json({ accessToken, user: { id: user._id, email: user.email, name: user.name } });
-
+    } catch (error) {
+        console.error("Signup Error:", error);
+        res.status(500).json({ message: "Internal Server Error during Signup" });
+    }
 };
 export const login = async (req, res) => {
+   try {
     const parsed = loginSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ message: parsed.error.errors[0].message });
+    if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0].message });
 
     const { email, password } = parsed.data;
     const user = await User.findOne({ email });
@@ -91,7 +105,10 @@ export const login = async (req, res) => {
     const refreshToken = signRefreshToken(payload);
     setRefreshCookie(res, refreshToken);
     res.json({ accessToken, user: { id: user._id, email: user.email, name: user.name } });
-
+    } catch (error) {
+        console.error("Login Error:", error);
+        res.status(500).json({ message: "Internal Server Error during Login" });
+    }
 };
 export const refresh = async (req, res) => {
     const token = req.cookies?.refreshToken;
@@ -111,6 +128,74 @@ export const logout = async (req, res) => {
     res.clearCookie("refreshToken");
     res.json({ message: "Logged out successfully鸭鸭鸭" });
 };
+
+
+
+export const getProfile = async (req, res) => {
+    try{
+        if (req.user.typ === "guest") return res.status(403).json({ message: "Guests do not have profiles" });
+       //从数据库中获取用户信息，排除密码哈希字段 -passwordHash 是 mongoose 的语法 用于排除某个字段
+        const user = await User.findById(req.user.sub).select("-passwordHash");
+        if (!user) return res.status(404).json({message: "User not found" });
+        res.json({
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name || "",
+            }
+        });
+    } catch (error) {
+        console.error("Get Profile Error:", error);
+        res.status(500).json({ message: "Internal Server Error during Get Profile" });
+    }
+};      
+
+export const updateProfile = async (req, res) => {
+    try {
+        if (req.user.typ === "guest") return res.status(403).json({message: "Guests cannot update profles" });
+
+        const parsed = updateProfileSchema.safeParse(req.body);
+        if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0].message });
+
+        const { name, email, oldPassword, newPassword} = parsed.data;
+        const user = await User.findById(req.user.sub);
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        //如果要更改密码
+        if (newPassword) {
+            if (!oldPassword) return res.status(400).json({ message: "Old password is required to set a new password" });
+
+            const passwordMatch = await bcrypt.compare(oldPassword, user.passwordHash);
+            if (!passwordMatch) return res.status(401).json({ message: "Old password is incorrect" });
+
+            user.passwordHash = await bcrypt.hash(newPassword, 12);
+        }
+        //更新mail
+        if (email && email !== user.email)
+        {
+            const existing = await User.findOne({email});
+            if (existing) return res.status(409).json({ message: "Email is already in use" });
+            user.email = email;
+        }
+        if (name !== undefined) user.name = name; //如果name属性存在则更新 哪怕是空字符串
+
+        await user.save();
+        res.json({ message: "Profile updated successfully" ,
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name || "",
+            }
+        });
+        
+    } catch (error) {
+        console.error("Update Profile Error:", error);
+        res.status(500).json({ message: "Internal Server Error during Update Profile" });
+    }
+};
+
+
+        
 
 
 

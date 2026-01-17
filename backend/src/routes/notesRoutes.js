@@ -1,6 +1,6 @@
 import express from "express";
 import { getAllNotes, getNoteById, createNote, updateNote, deleteNote } from '../controllers/notesControllers.js'
-import { guest, signup, login, refresh, logout } from '../controllers/authControllers.js'
+import { guest, signup, login, refresh, logout, getProfile, updateProfile } from '../controllers/authControllers.js'
 import requireAuth from "../middleware/auth.js";
 
 
@@ -39,6 +39,8 @@ router.post("/signup", signup);
 router.post("/login", login);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
+router.get("/profile", requireAuth, getProfile);
+router.put("/profile", requireAuth, updateProfile);
 
 router.use(requireAuth);  //在所有路由中间件中使用身份验证中间件
 
