@@ -11,8 +11,8 @@ const requireAuth = (req, res, next) => {
     try{
        //使用密钥验证token的有效性 会把解码后的信息存储在decoded变量中
         const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
-        //将解码后的用户信息存储在请求对象的auth属性中 以便后续中间件或路由处理程序使用
-        req.auth = {id: decoded.sub, type: decoded.typ };
+        //将解码后的用户信息存储在请求对象的 auth 属性中
+        req.auth = { sub: decoded.sub, typ: decoded.typ, email: decoded.email };
         return next();
         } catch (error) {
             return res.status(401).json({message: "Unauthorized"});
@@ -47,11 +47,11 @@ export default requireAuth;
 // req = { headers: {...}, body: {...}, ... }
 
 // 2. 这行代码给 req 添加了 auth 属性
-// req.auth = {id: decoded.sub, type: decoded.typ};
+// req.auth = { sub: decoded.sub, typ: decoded.typ };
 
 // 3. 现在 req 对象变成了：
 // req = { 
 //   headers: {...}, 
 //   body: {...}, 
-//   auth: { id: "用户ID", type: "access" }  // ← 新增的
+//   auth: { sub: "用户ID", typ: "access" }  // ← 新增的
 // }

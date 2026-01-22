@@ -1,14 +1,11 @@
-
 import mongoose from "mongoose";   //用于检查ID的有效性
 import Note from "../models/Note.js"
 
 //比原始版本增加了功能 支持多用户 每个用户只能访问自己的笔记 user+guest（visitor mode）
 //ownerFilter函数根据请求对象中的认证信息，构建一个过滤器对象，用于确保数据库查询只返回属于当前认证用户的笔记。
-//所有的Note查询/修改 都必须加上owner条件 ownerId = req.auth.id  ownerType=req.auth.type
-//并且create的时候写入owner(guest还要可选加expiresAt)
-
+//所有的Note查询/修改 都必须加上owner条件
 const ownerFilter = (req) => {
-    return { ownerId: req.auth.id, ownerType: req.auth.type};
+    return { ownerId: req.auth.sub, ownerType: req.auth.typ};
 }
 
 // 在这个文件中，req 和 res 仅仅是函数的形参 (formal parameters)。
@@ -81,11 +78,18 @@ export async function createNote(req, res){
             return res.status(400).json({message: "Content cannot exceed 5000 characters鸭鸭鸭"});
         }
 
-        const expiresAt = req.auth.type === "guest"? new Date(Date.now() + 7*24*60*60*1000) : null; //访客模式下笔记7天后过期 
-        
-        
-        
-        const newNote = new Note({title:title.trim(), content:content.trim(), ownerId:req.auth.id, ownerType:req.auth.type, expiresAt});  //构造函数 参数取决与前面的模型 
+        const expiresAt = req.auth.typ === "guest"? new Date(Date.now() + 5*60*1000) : null; //访客模式下笔记5分钟后过期 
+        if (req.auth.typ === "guest"){
+            const existingGuestNotesCount = await Note.countDocuments(ownerFilter(req));
+            if (existingGuestNotesCount >= 1){
+                return res.status(400).json({
+                    message: "Guest users can only create one note. Please sign up to create more notes",
+                    needsRegistration: true
+                });
+            }
+        }
+
+        const newNote = new Note({title:title.trim(), content:content.trim(), ownerId:req.auth.sub, ownerType:req.auth.typ, expiresAt});  //构造函数 参数取决与前面的模型 
         //创建“表里的一行数据”的内存对象（document），但此时还没有真正写入数据库。
         //在mongoose里  表=集合 collection  行=document
         

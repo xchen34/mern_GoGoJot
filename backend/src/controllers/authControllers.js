@@ -71,7 +71,7 @@ export const signup = async (req, res) => {
         const parsed = signupSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0].message });
 
-    const { email, password, name = "" } = parsed.data;
+    const { email, password, name } = parsed.data;
     const existing = await User.findOne({ email });
     if (existing) return res.status(409).json({ message: "User already exists" });
 
@@ -133,9 +133,9 @@ export const logout = async (req, res) => {
 
 export const getProfile = async (req, res) => {
     try{
-        if (req.user.typ === "guest") return res.status(403).json({ message: "Guests do not have profiles" });
+        if (req.auth.typ === "guest") return res.status(403).json({ message: "Guests do not have profiles" });
        //从数据库中获取用户信息，排除密码哈希字段 -passwordHash 是 mongoose 的语法 用于排除某个字段
-        const user = await User.findById(req.user.sub).select("-passwordHash");
+        const user = await User.findById(req.auth.sub).select("-passwordHash");
         if (!user) return res.status(404).json({message: "User not found" });
         res.json({
             user: {
@@ -152,13 +152,13 @@ export const getProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
     try {
-        if (req.user.typ === "guest") return res.status(403).json({message: "Guests cannot update profles" });
+        if (req.auth.typ === "guest") return res.status(403).json({message: "Guests cannot update profles" });
 
         const parsed = updateProfileSchema.safeParse(req.body);
         if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0].message });
 
         const { name, email, oldPassword, newPassword} = parsed.data;
-        const user = await User.findById(req.user.sub);
+        const user = await User.findById(req.auth.sub);
         if (!user) return res.status(404).json({ message: "User not found" });
 
         //如果要更改密码
