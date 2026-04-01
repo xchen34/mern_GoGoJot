@@ -1,9 +1,11 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
+import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import { signAccessToken, signRefreshToken } from "../config/jwt.js";
 import { z } from "zod"; //用于验证输入数据
+import transporter from "../config/mailer.js";
 
 
 
@@ -23,6 +25,10 @@ const loginSchema = z.object({
     password: z.string().min(8).max(72),
 });
 
+const googleLoginSchema = z.object({
+    credential: z.string().min(20),
+});
+
 
 const updateProfileSchema = z.object({
     name: z.string().max(50).optional(),
@@ -30,6 +36,8 @@ const updateProfileSchema = z.object({
     oldPassword: z.string().min(8).max(72).optional(),
     newPassword: z.string().min(8).max(72).optional(),
 });
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 
 //当用户登录或刷新 Token 时，调用此函数把长效的 refreshToken 种在浏览器里。
@@ -78,6 +86,18 @@ export const signup = async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 12);
     const user = await User.create({ email, passwordHash, name });
 
+    // Welcome email should be best-effort and must not block signup success.
+    try {
+        await transporter.sendMail({
+            from: "no-reply@yourapp.com",
+            to: user.email,
+            subject: "Welcome!",
+            text: "Thanks for signing up.",
+        });
+    } catch (mailError) {
+        console.error("Welcome email failed:", mailError);
+    }
+
     const payload = { sub: user._id.toString(), typ: "user", email: user.email };
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
@@ -96,6 +116,7 @@ export const login = async (req, res) => {
     const { email, password } = parsed.data;
     const user = await User.findOne({ email });
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
+    if (!user.passwordHash) return res.status(401).json({ message: "Please sign in with Google" });
 
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatch) return res.status(401).json({ message: "Invalid credentials" });
@@ -108,6 +129,50 @@ export const login = async (req, res) => {
     } catch (error) {
         console.error("Login Error:", error);
         res.status(500).json({ message: "Internal Server Error during Login" });
+    }
+};
+
+export const googleLogin = async (req, res) => {
+    try {
+        if (!process.env.GOOGLE_CLIENT_ID) {
+            return res.status(500).json({ message: "Server configuration error (Missing GOOGLE_CLIENT_ID)" });
+        }
+
+        const parsed = googleLoginSchema.safeParse(req.body);
+        if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0].message });
+
+        const { credential } = parsed.data;
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+
+        if (!payload?.email) {
+            return res.status(400).json({ message: "Google account email is missing" });
+        }
+
+        let user = await User.findOne({ email: payload.email });
+        if (!user) {
+            user = await User.create({
+                email: payload.email,
+                name: payload.name || payload.given_name || "",
+                passwordHash: null,
+            });
+        }
+
+        const jwtPayload = { sub: user._id.toString(), typ: "user", email: user.email };
+        const accessToken = signAccessToken(jwtPayload);
+        const refreshToken = signRefreshToken(jwtPayload);
+        setRefreshCookie(res, refreshToken);
+
+        return res.json({
+            accessToken,
+            user: { id: user._id, email: user.email, name: user.name || "" },
+        });
+    } catch (error) {
+        console.error("Google Login Error:", error);
+        return res.status(401).json({ message: "Invalid Google credential" });
     }
 };
 export const refresh = async (req, res) => {
@@ -195,7 +260,91 @@ export const updateProfile = async (req, res) => {
 };
 
 
-        
+
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(20),
+  password: z.string().min(8).max(72),
+});
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const parsed = forgotPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.issues[0].message });
+    }
+
+    const { email } = parsed.data;
+    const user = await User.findOne({ email });
+
+    // 防用户枚举：无论用户是否存在都返回同样信息
+    if (!user) {
+      return res.json({ message: "If that email exists, a reset link has been sent." });
+    }
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+
+    user.resetPasswordToken = tokenHash;
+    user.resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+    await user.save();
+
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
+
+    try {
+      await transporter.sendMail({
+        from: "no-reply@yourapp.com",
+        to: user.email,
+        subject: "Reset your password",
+        text: `Click this link to reset your password: ${resetLink}\nThis link expires in 15 minutes.`,
+      });
+    } catch (mailError) {
+      console.error("Reset email failed:", mailError);
+    }
+
+    return res.json({ message: "If that email exists, a reset link has been sent." });
+  } catch (error) {
+    console.error("Forgot Password Error:", error);
+    return res.status(500).json({ message: "Internal Server Error during Forgot Password" });
+  }
+};
+
+export const resetPassword = async (req, res) => {
+  try {
+    const parsed = resetPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: parsed.error.issues[0].message });
+    }
+
+    const { token, password } = parsed.data;
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
+    const user = await User.findOne({
+      resetPasswordToken: tokenHash,
+      resetPasswordExpires: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired reset token" });
+    }
+
+    user.passwordHash = await bcrypt.hash(password, 12);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    await user.save();
+
+    return res.json({ message: "Password reset successful" });
+  } catch (error) {
+    console.error("Reset Password Error:", error);
+    return res.status(500).json({ message: "Internal Server Error during Reset Password" });
+  }
+};
+
 
 
 

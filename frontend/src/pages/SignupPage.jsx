@@ -62,7 +62,7 @@ const SignupPage = () => {
                     <div className="text-center">
                         <h1 className="text-3xl font-bold">Create Account</h1>
                         <p className="text-base-content/70 mt-2">
-                            Join ThinkBoard today
+                            Join Jotify today
                         </p>
                     </div>
 
@@ -146,7 +146,7 @@ const SignupPage = () => {
 
                     <div className="text-center text-sm">
                         <span className="text-base-content/70">Already have an account? </span>
-                        <Link to="/entry" className="link link-primary font-medium">
+                        <Link to="/login" className="link link-primary font-medium">
                             Sign in
                         </Link>
                     </div>

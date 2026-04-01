@@ -9,13 +9,13 @@ const noteSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
-        maxlength: 100,
+        maxlength: 50,
     },
     content: {
         type: String,
         required: true,
         trim: true,
-        maxlength: 5000,
+        maxlength: 500,
     },
     ownerId: {
         type: String, required: true, index: true

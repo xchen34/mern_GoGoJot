@@ -1,15 +1,17 @@
 import { PlusIcon, LogOutIcon, UserIcon } from 'lucide-react'
 import React from 'react'
 import {Link, useNavigate} from "react-router-dom"
-import {jwtDecode} from "jwt-decode"
 import toast from 'react-hot-toast'
+import api from "../lib/axios";
+import { decodeJwt } from "../lib/utils";
 
 const Navbar = () => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    // 删除本地存储的 JWT token
-    localStorage.removeItem("token");
+    // 删除本地存储的 Access Token 并清理刷新 Token cookie
+    localStorage.removeItem("accessToken");
+    api.post("/auth/logout").catch(() => {});
     toast.success("Logged out successfully");
     // 重定向到登录页面
     navigate("/login", {replace: true});
@@ -18,9 +20,9 @@ const Navbar = () => {
     try {
       const token = localStorage.getItem("accessToken");
       if (!token) return false;
-      const decoded = jwtDecode(token);
-      return decoded.typ === "guest";
-    } catch (error) {
+      const decoded = decodeJwt(token);
+      return decoded?.typ === "guest";
+    } catch {
       return false;
     }};
   
@@ -29,7 +31,10 @@ const Navbar = () => {
   <header className="bg-base-300 border-b border-base-content/10">
     <div className="mx-auto max-w-6xl p-4">
         <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-primary font-mono tracking-tight">ThinkBoard</h1>
+            <div>
+                <h1 className="text-3xl font-bold text-primary font-mono tracking-tight">Jotify</h1>
+                <p className="text-sm text-base-content/70">Simple notes, clear mind.</p>
+            </div>
             <div className="flex items-center gap-4">
                 <Link to={"/create"} className="btn btn-primary">
                     <PlusIcon className='size-5' />

@@ -286,4 +286,7 @@ if (process.env.NODE_ENV === "production") {
 // prevent abuse, protec server from getting overwhelmed   429 too many requests
 
 
-
+// 查占用进程
+// lsof -nP -iTCP:3000 -sTCP:LISTEN
+// 杀掉旧进程（把 PID 换成你查到的）
+// kill 31960

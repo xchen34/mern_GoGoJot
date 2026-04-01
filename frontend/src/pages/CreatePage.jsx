@@ -1,8 +1,7 @@
 import { ArrowLeftIcon } from 'lucide-react';
 import { useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router-dom";
 import toast from 'react-hot-toast';
-import axios from 'axios';
 import api from '../lib/axios';
 
 
@@ -13,8 +12,8 @@ const CreatePage = () => {
   
   const navigate = useNavigate()
   
-  const MAX_TITLE_LENGTH = 100;
-  const MAX_CONTENT_LENGTH = 5000;
+  const MAX_TITLE_LENGTH = 50;
+  const MAX_CONTENT_LENGTH = 500;
   
   const handleSubmit = async (e) => {
     e.preventDefault();  //防止浏览器刷新 你能看到console React接管逻辑

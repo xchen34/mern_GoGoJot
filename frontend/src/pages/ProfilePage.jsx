@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../lib/axios";
 import toast from "react-hot-toast";
-import { jwtDecode } from "jwt-decode";
+import { decodeJwt } from "../lib/utils";
 
 const ProfilePage = () => {
     const navigate = useNavigate();
@@ -20,30 +20,7 @@ const ProfilePage = () => {
         confirmNewPassword: ""
     });
 
-    // 检查是否是 guest
-    useEffect(() => {
-        const token = localStorage.getItem("accessToken");
-        if (!token) {
-            navigate("/entry");
-            return;
-        }
-
-        try {
-            const decoded = jwtDecode(token);
-            if (decoded.typ === "guest") {
-                toast.error("Guest users don't have profiles");
-                navigate("/");
-                return;
-            }
-        } catch (err) {
-            navigate("/entry");
-            return;
-        }
-
-        fetchProfile();
-    }, [navigate]);
-
-    const fetchProfile = async () => {
+    const fetchProfile = useCallback(async () => {
         try {
             const res = await api.get("/auth/profile");
             setUserData(res.data.user);
@@ -58,12 +35,35 @@ const ProfilePage = () => {
             console.error(err);
             toast.error("Failed to load profile");
             if (err.response?.status === 401) {
-                navigate("/entry");
+                navigate("/login");
             }
         } finally {
             setLoading(false);
         }
-    };
+    }, [navigate]);
+
+    // 检查是否是 guest
+    useEffect(() => {
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+            navigate("/login");
+            return;
+        }
+
+        try {
+            const decoded = decodeJwt(token);
+            if (decoded?.typ === "guest") {
+                toast.error("Guest users don't have profiles");
+                navigate("/");
+                return;
+            }
+        } catch {
+            navigate("/login");
+            return;
+        }
+
+        fetchProfile();
+    }, [fetchProfile, navigate]);
 
     const handleChange = (e) => {
         setFormData({

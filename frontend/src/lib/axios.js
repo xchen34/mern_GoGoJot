@@ -39,7 +39,7 @@ api.interceptors.response.use(
          try {
             // 1. 尝试用 RefreshToken 换取新的 AccessToken
             // 因为我们开启了 withCredentials，浏览器会自动带上那个保质期 7 天的 cookie
-            const response = await api.post("/refresh");
+            const response = await api.post("/auth/refresh");
 
             // 2. 拿到新的 AccessToken
             const { accessToken } = response.data;

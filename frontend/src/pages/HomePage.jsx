@@ -6,6 +6,8 @@ import NoteCard from '../components/NoteCard';
 import api from "../lib/axios";  //取代一次次写完整的axios.get那些url 大项目容易出错 普遍做法是单独写一个axios.js 也便于修改
 import toast from "react-hot-toast"
 import NotesNotFound from "../components/NotesNotFound";
+import { decodeJwt } from "../lib/utils";
+import { Link } from "react-router-dom";
 
 const HomePage = () => {
   //数组解构 useState(true)返回的是一个数组 [true, function] 
@@ -17,6 +19,8 @@ const HomePage = () => {
   const [isRateLimited, setIsRateLimited] = useState(false);
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const token = localStorage.getItem("accessToken");
+  const isGuest = decodeJwt(token)?.typ === "guest";
   
   useEffect(() => {
     const fetchNotes = async () => {
@@ -33,7 +37,7 @@ const HomePage = () => {
         setIsRateLimited(false);
       }catch(error){
         console.log("Error fetching notes鸭鸭鸭");
-        if(error.response.status === 429) //arrive rate limit
+        if (error.response?.status === 429) //arrive rate limit
         {setIsRateLimited(true)}
         else{
           toast.error("Failed to load notes");
@@ -53,12 +57,42 @@ const HomePage = () => {
     <div className="min-h-screen">
       <Navbar/>
 
+      {isGuest && (
+        <div className="max-w-7xl mx-auto p-4 mt-6">
+          <div className="card bg-base-100 border-t-4 border-solid border-[#00FF9D] shadow">
+            <div className="card-body py-5">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                  <div className="text-sm uppercase tracking-wider text-base-content/60">
+                    Guest Session
+                  </div>
+                  <h3 className="text-lg font-semibold">
+                    You can create only 1 note, and guest notes are not saved.
+                  </h3>
+                  <p className="text-sm text-base-content/70">
+                    To unlock full access and keep your notes, please sign up or sign in.
+                  </p>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Link to="/signup" className="btn btn-primary">
+                    Sign Up
+                  </Link>
+                  <Link to="/login" className="btn btn-outline">
+                    Sign In
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isRateLimited && <RateLimitedUI />}
 
       <div className="max-w-7xl mx-auto p-4 mt-6">
         {loading && <div className="text-center text-primary py-10">Loading notes...</div>}
 
-        {notes.length === 0 && !isRateLimited && <NotesNotFound />}
+        {!loading && notes.length === 0 && !isRateLimited && <NotesNotFound />}
 
         {notes.length > 0 && !isRateLimited && (
           <div>

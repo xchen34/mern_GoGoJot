@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import HomePage from "./pages/HomePage";
 import CreatePage from "./pages/CreatePage";
@@ -6,10 +6,14 @@ import NoteDetailPage from "./pages/NoteDetailPage";
 import EntryPage from "./pages/EntryPage";
 import SignupPage from './pages/SignupPage';
 import ProfilePage from './pages/ProfilePage';
-import toast from "react-hot-toast";
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 
 const App = () => {
+  useLocation();
+  const hasToken = Boolean(localStorage.getItem("accessToken"));
+
   return (
     <div className="relative h-full w-full">
       {/* <button className="btn">Default</button>
@@ -19,15 +23,16 @@ const App = () => {
       <button className="btn btn-neutral">Neutral</button>
        <button className="btn btn-ghost">Ghost</button>
         <button className="btn btn-link">Link</button> */}
-      <div className="absolute inset-0 -z-10 h-full w-full items-center px-5 py-24 [background:radial-gradien
-        (125%_125%_at_50%_10%,#000-60%m#000FF9D40_100%)]" />
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(125%_125%_at_50%_10%,#1f2937_0%,#111827_45%,#030712_100%)]" />
       <Routes>
-        <Route path="/login" element={<EntryPage />} />
-        <Route path="/signup" element={<SignupPage />} />
-        <Route path="/" element={<HomePage />} />
-        <Route path="/create" element={<CreatePage />} />
-        <Route path="/note/:id" element={<NoteDetailPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/login" element={hasToken ? <Navigate to="/" replace /> : <EntryPage />} />
+        <Route path="/signup" element={hasToken ? <Navigate to="/" replace /> : <SignupPage />} />
+        <Route path="/" element={hasToken ? <HomePage /> : <Navigate to="/login" replace />} />
+        <Route path="/create" element={hasToken ? <CreatePage /> : <Navigate to="/login" replace />} />
+        <Route path="/note/:id" element={hasToken ? <NoteDetailPage /> : <Navigate to="/login" replace />} />
+        <Route path="/profile" element={hasToken ? <ProfilePage /> : <Navigate to="/login" replace />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Routes>
 
     </div>

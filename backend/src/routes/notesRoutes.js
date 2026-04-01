@@ -1,8 +1,10 @@
 import express from "express";
 import { getAllNotes, getNoteById, createNote, updateNote, deleteNote } from '../controllers/notesControllers.js'
-import { guest, signup, login, refresh, logout, getProfile, updateProfile } from '../controllers/authControllers.js'
 import requireAuth from "../middleware/auth.js";
-
+import {
+  guest, signup, login, refresh, logout, getProfile, updateProfile,
+  forgotPassword, resetPassword, googleLogin
+} from "../controllers/authControllers.js";
 
 //Router()创建一个新的路由对象 是 Express.js 提供的一个功能，允许你创建模块化、可挂载的路由处理器。
 const router = express.Router();
@@ -37,10 +39,13 @@ const router = express.Router();
 router.post("/guest", guest);
 router.post("/signup", signup);
 router.post("/login", login);
+router.post("/google", googleLogin);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
 router.get("/profile", requireAuth, getProfile);
 router.put("/profile", requireAuth, updateProfile);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 
 router.use(requireAuth);  //在所有路由中间件中使用身份验证中间件
 

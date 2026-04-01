@@ -1,11 +1,12 @@
 import React from 'react'
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import api from '../lib/axios';
 import toast from 'react-hot-toast';
-import { ArrowLeftIcon, LoaderIcon, Trash2Icon } from 'lucide-react';
-import { Link } from 'react-router';
+import { ArrowLeftIcon, LoaderIcon, PenSquareIcon, Trash2Icon } from 'lucide-react';
+import { formatDate } from '../lib/utils';
+import { Link } from 'react-router-dom';
 
 
 
@@ -111,11 +112,7 @@ const NoteDetailPage = () => {
               Back to notes
             </Link>
             <div className="flex gap-2">
-              {!isEditing ? (
-                <button onClick={() => setIsEditing(true)} className="btn btn-primary">
-                  Edit Note
-                </button>
-              ) : (
+              {isEditing && (
                 <button onClick={() => setIsEditing(false)} className="btn btn-ghost">
                   Cancel
                 </button>
@@ -128,44 +125,72 @@ const NoteDetailPage = () => {
           </div>
          <div className="card bg-base-100">
             <div className="card-body">
+              {!isEditing && (
+                <div className="mb-4 pb-4 border-b border-base-content/10">
+                  <p className="text-sm text-base-content/60">Created on {formatDate(new Date(note.createdAt))}</p>
+                </div>
+              )}
               <div className="form-control mb-4">
-                <label className="label">
-                  <span className="label-text">Title</span>
-                  {isEditing && (
+                {isEditing && (
+                  <label className="label">
+                    <span className="label-text">Title</span>
                     <span className='label-text-alt text-base-content/50'>
                       {note.title.length}/{MAX_TITLE_LENGTH}
                     </span>
-                  )}
-                </label>
-                <input
-                  type="text"
-                  placeholder="Note title"
-                  className="input input-bordered"
-                  value={note.title}
-                  maxLength={MAX_TITLE_LENGTH}
-                  readOnly={!isEditing}
-                  onChange={(e) => setNote({ ...note, title: e.target.value })} //...note 是展开运算符，表示复制 note 对象的所有属性，然后通过 title: e.target.value 更新 title 属性的值，从而实现对 note 对象的部分更新，而不影响其他属性。
-                />
+                  </label>
+                )}
+                {isEditing ? (
+                  <input
+                    type="text"
+                    placeholder="Note title"
+                    className="input input-bordered"
+                    value={note.title}
+                    maxLength={MAX_TITLE_LENGTH}
+                    onChange={(e) => setNote({ ...note, title: e.target.value })}
+                  />
+                ) : (
+                  <div className="px-4 py-2 text-2xl font-semibold text-base-content">
+                    {note.title}
+                  </div>
+                )}
               </div>
 
               <div className="form-control mb-4">
-                <label className="label">
-                  <span className="label-text">Content</span>
-                  {isEditing && (
+                {isEditing && (
+                  <label className="label">
+                    <span className="label-text">Content</span>
                     <span className='label-text-alt text-base-content/50'>
                       {note.content.length}/{MAX_CONTENT_LENGTH}
                     </span>
-                  )}
-                </label>
-                <textarea
-                  placeholder="Write your note here..."
-                  className="textarea textarea-bordered h-32"
-                  value={note.content}
-                  maxLength={MAX_CONTENT_LENGTH}
-                  readOnly={!isEditing}
-                  onChange={(e) => setNote({ ...note, content: e.target.value })}
-                />
+                  </label>
+                )}
+                {isEditing ? (
+                  <textarea
+                    placeholder="Write your note here..."
+                    className="textarea textarea-bordered h-32"
+                    value={note.content}
+                    maxLength={MAX_CONTENT_LENGTH}
+                    onChange={(e) => setNote({ ...note, content: e.target.value })}
+                  />
+                ) : (
+                  <div className="whitespace-pre-wrap leading-relaxed text-base-content/90 bg-base-200/40 rounded-lg p-4">
+                    {note.content}
+                  </div>
+                )}
               </div>
+
+              {!isEditing && (
+                <div className="card-actions justify-end">
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="btn btn-circle btn-primary"
+                    aria-label="Edit note"
+                    title="Edit note"
+                  >
+                    <PenSquareIcon className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
 
               {isEditing && (
                 <div className="card-actions justify-end">

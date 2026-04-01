@@ -1,5 +1,5 @@
-import { useNavigate, Link } from "react-router";
-import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
 import api from "../lib/axios";
 import toast from "react-hot-toast";
 
@@ -8,6 +8,9 @@ const EntryPage = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    const [googleError, setGoogleError] = useState("");
+    const googleBtnRef = useRef(null);
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -42,14 +45,84 @@ const EntryPage = () => {
         }
     };
 
+    useEffect(() => {
+        setGoogleError("");
+
+        if (!googleClientId) {
+            setGoogleError("Google Client ID is missing. Please set VITE_GOOGLE_CLIENT_ID in frontend/.env and restart Vite.");
+            return;
+        }
+
+        if (!googleBtnRef.current) return;
+
+        const handleGoogleResponse = async (response) => {
+            try {
+                const res = await api.post("/auth/google", { credential: response.credential });
+                localStorage.setItem("accessToken", res.data.accessToken);
+                toast.success("Google login successful!");
+                navigate("/", { replace: true });
+            } catch (err) {
+                console.error(err);
+                toast.error(err?.response?.data?.message || "Google login failed");
+            }
+        };
+        console.log("googleClientId:", googleClientId);
+
+        const initGoogle = () => {
+            if (!window.google?.accounts?.id) {
+                //setGoogleError("Google script loaded, but GIS is not available in this browser.");
+                return;
+            }
+
+            // React StrictMode runs effects twice in development; initialize GIS once per client id.
+            if (window.__gsiInitializedClientId !== googleClientId) {
+                window.google.accounts.id.initialize({
+                    client_id: googleClientId,
+                    callback: handleGoogleResponse,
+                });
+                window.__gsiInitializedClientId = googleClientId;
+            }
+
+            googleBtnRef.current.innerHTML = "";
+            window.google.accounts.id.renderButton(googleBtnRef.current, {
+                theme: "outline",
+                size: "large",
+                shape: "pill",
+                width: 320,
+                text: "continue_with",
+            });
+        };
+
+        if (window.google?.accounts?.id) {
+            initGoogle();
+            return;
+        }
+
+        const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+        if (existingScript) {
+            initGoogle();
+            return;
+        }
+
+        const script = document.createElement("script");
+        script.src = "https://accounts.google.com/gsi/client";
+        script.async = true;
+        script.defer = true;
+        script.onload = initGoogle;
+        script.onerror = () => {
+            setGoogleError("Failed to load Google script. Check network/ad-blocker and refresh.");
+        };
+        document.body.appendChild(script);
+    }, [googleClientId, navigate]);
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-base-200">
             <div className="card bg-base-100 w-full max-w-md shadow">
                 <div className="card-body space-y-4">
                     <div className="text-center">
-                        <h1 className="text-3xl font-bold">ThinkBoard</h1>
+                        <h1 className="text-3xl font-bold">Jotify</h1>
                         <p className="text-base-content/70 mt-2">
-                            Welcome back! Sign in to continue.
+                            Simple notes, clear mind.
                         </p>
                     </div>
 
@@ -60,6 +133,8 @@ const EntryPage = () => {
                             </label>
                             <input 
                                 type="email" 
+                                id="login-email"
+                                name="email"
                                 placeholder="your@email.com" 
                                 className="input input-bordered w-full"
                                 value={email}
@@ -74,6 +149,8 @@ const EntryPage = () => {
                             </label>
                             <input 
                                 type="password" 
+                                id="login-password"
+                                name="password"
                                 placeholder="••••••••" 
                                 className="input input-bordered w-full"
                                 value={password}
@@ -89,11 +166,26 @@ const EntryPage = () => {
                         >
                             {loading ? "Signing in..." : "Sign In"}
                         </button>
+
+                        <div className="text-right">
+                            <Link to="/forgot-password" className="link link-primary text-sm">
+                                Forgot password?
+                            </Link>
+                        </div>
                     </form>
 
                     <div className="divider">OR</div>
 
-                    <button className="btn btn-outline w-full" onClick={handleGuest}>
+                    <div className="space-y-2">
+                        <div className="flex justify-center">
+                            <div ref={googleBtnRef} />
+                        </div>
+                        {googleError && (
+                            <p className="text-center text-xs text-error">{googleError}</p>
+                        )}
+                    </div>
+
+                    <button type="button" className="btn btn-outline w-full" onClick={handleGuest}>
                         Continue as Guest
                     </button>
 

@@ -19,22 +19,28 @@ if (!globalThis.fetch) {
     globalThis.fetch = fetch;
 }
 
+const getRateLimitIdentifier = (req) => {
+    const forwardedFor = req.headers["x-forwarded-for"];
+    const clientIp = typeof forwardedFor === "string"
+        ? forwardedFor.split(",")[0].trim()
+        : req.ip;
 
+    return req.auth?.sub || clientIp || "anonymous";
+};
 
-
-//实现具体的业务逻辑 做一些checks
+// 实现具体的业务逻辑。若外部限流服务暂时不可用，则降级放行，避免整站 API 直接 500。
 const rateLimiter = async (req, res, next) => {
     try{
-        //调用限流器的 limit 方法进行限流检查
-        const {success} = await ratelimit.limit("my-limit-key") //这是一个静态的key 所有用户都共用同一个key 会导致所有用户都被限流
+        const identifier = getRateLimitIdentifier(req);
+        const {success} = await ratelimit.limit(identifier);
         //limiter.limit方法会返回一个对象 包含 success 属性 表示是否通过限流检查 {success: true/false, limit: number, remaining: number, reset: number}
         if (!success) {
             return res.status(429).json({message: "Too many requests"}) 
         }
         next();
     } catch (error) {
-        console.log("Rate limit erro 鸭鸭鸭", error);
-          next(error);
+        console.log("Rate limit error鸭鸭鸭", error);
+        next();
     }
 };
 
