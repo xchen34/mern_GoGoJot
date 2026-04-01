@@ -42,11 +42,31 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 //当用户登录或刷新 Token 时，调用此函数把长效的 refreshToken 种在浏览器里。
 //res.cookie()第一个参数是
-const setRefreshCookie = (res, token) => {
+const isLocalhost = (host = "") =>
+    host === "localhost" || host === "127.0.0.1";
+
+const isHttpsRequest = (req) => {
+    if (!req) return false;
+    const xfProto = req.headers["x-forwarded-proto"];
+    return req.secure === true || xfProto === "https";
+};
+
+const shouldSecureCookie = (req) => {
+    if (isLocalhost(req?.hostname)) return false;
+    if (process.env.NODE_ENV !== "production") return false;
+    return isHttpsRequest(req);
+};
+
+const getSameSitePolicy = (req) => {
+    if (isLocalhost(req?.hostname)) return "lax";
+    return process.env.NODE_ENV === "production" ? "strict" : "lax";
+};
+
+const setRefreshCookie = (res, token, req) => {
     res.cookie("refreshToken", token, {
         httpOnly: true, //// 关键安全设置：防止前端 JS 代码 (如 XSS 攻击) 访问此 Cookie
-        secure: process.env.NODE_ENV === "production",// 仅允许通过 HTTPS 传输 (开发环境下如果用 HTTP 可能会导致无法设置，通常需配合环境判断)
-        sameSite: "strict",// 防止 CSRF 攻击，要求请求必须来自同一站点
+        secure: shouldSecureCookie(req),// 仅在生产 + HTTPS 下启用；本地开发禁用
+        sameSite: getSameSitePolicy(req),// 开发/本地放宽避免调试卡住
         maxAge: 7 * 24 * 60 * 60 * 1000 // cookie有效期7days ms毫秒为单位
     });
 }
@@ -65,7 +85,7 @@ export const guest = async (req, res) => {
         const accessToken = signAccessToken(payload);
         const refreshToken = signRefreshToken(payload);
 
-        setRefreshCookie(res, refreshToken);
+        setRefreshCookie(res, refreshToken, req);
         console.log("Guest login successful for ID:", guestId);
         res.json({ accessToken, mode: "guest" });
     } catch (error) {
@@ -101,7 +121,7 @@ export const signup = async (req, res) => {
     const payload = { sub: user._id.toString(), typ: "user", email: user.email };
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
-    setRefreshCookie(res, refreshToken);
+    setRefreshCookie(res, refreshToken, req);
     res.status(201).json({ accessToken, user: { id: user._id, email: user.email, name: user.name } });
     } catch (error) {
         console.error("Signup Error:", error);
@@ -124,7 +144,7 @@ export const login = async (req, res) => {
     const payload = { sub: user._id.toString(), typ: "user", email: user.email };
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
-    setRefreshCookie(res, refreshToken);
+    setRefreshCookie(res, refreshToken, req);
     res.json({ accessToken, user: { id: user._id, email: user.email, name: user.name } });
     } catch (error) {
         console.error("Login Error:", error);
@@ -164,7 +184,7 @@ export const googleLogin = async (req, res) => {
         const jwtPayload = { sub: user._id.toString(), typ: "user", email: user.email };
         const accessToken = signAccessToken(jwtPayload);
         const refreshToken = signRefreshToken(jwtPayload);
-        setRefreshCookie(res, refreshToken);
+        setRefreshCookie(res, refreshToken, req);
 
         return res.json({
             accessToken,
@@ -183,7 +203,7 @@ export const refresh = async (req, res) => {
         const payload = { sub: decoded.sub, typ: decoded.typ, email: decoded.email };
         const accessToken = signAccessToken(payload);
         const refreshToken = signRefreshToken(payload);
-        setRefreshCookie(res, refreshToken);
+        setRefreshCookie(res, refreshToken, req);
         res.json({ accessToken });
     } catch (error) {
         return res.status(401).json({ message: "Invalid refresh token" });

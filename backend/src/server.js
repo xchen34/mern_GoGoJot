@@ -5,6 +5,7 @@ import express from "express";
 
 import cors from "cors";
 import dotenv from "dotenv"
+import { fileURLToPath } from "url";
 
 //引入路由模块实例 赋值给变量notesRoutes 
 import notesRoutes from "./routes/notesRoutes.js"
@@ -20,9 +21,11 @@ import path from "path";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 
+const __filename = fileURLToPath(import.meta.url);
+const __basedir = path.dirname(__filename);
 
-
-dotenv.config(); //加载.env文件中的环境变量
+dotenv.config(); //加载当前工作目录的 .env
+dotenv.config({ path: path.join(__basedir, "../.env") }); //确保从 backend/.env 加载
 
 
 // express() creates an instance of an express application 
@@ -77,14 +80,46 @@ connectDB().then(() => {
 //     })); //这个是前后端不在同端口时需要的 跨域资源共享 中间件
 // }
 
-app.use(helmet()); //设置各种HTTP头以增强应用的安全性 保护应用免受一些已知的web漏洞攻击
+const isDev = process.env.NODE_ENV !== "production";
+
+app.use(helmet({
+    contentSecurityPolicy: isDev ? false : {
+        directives: {
+            ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+            "script-src": ["'self'", "https://accounts.google.com"],
+            "frame-src": ["'self'", "https://accounts.google.com"],
+            "connect-src": ["'self'", "https://accounts.google.com", "https://www.googleapis.com"],
+            "img-src": ["'self'", "data:", "https://lh3.googleusercontent.com"],
+        },
+    },
+})); //设置各种HTTP头以增强应用的安全性 保护应用免受一些已知的web漏洞攻击
 
 app.use(cookieParser()); //解析请求中的Cookie头，并将解析后的Cookie对象挂载到req.cookies属性上，方便后续处理中间件或路由访问
 
-app.use(cors({
-    origin: process.env.CORS_ORIGIN || "http://localhost:5173", //允许访问的前端地址
-    credentials: true, //允许携带cookie
-})); //这个是前后端不在同端口时需要的 跨域资源共享 中间件
+const allowedOrigins = (process.env.CORS_ORIGIN || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+const isLocalOrigin = (origin) =>
+    /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
+if (isDev) {
+    app.use(cors({
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.includes(origin)) return callback(null, true);
+            if (isLocalOrigin(origin)) return callback(null, true);
+            return callback(new Error("Not allowed by CORS"));
+        },
+        credentials: true,
+    }));
+} else if (allowedOrigins.length > 0) {
+    app.use(cors({
+        origin: allowedOrigins,
+        credentials: true,
+    }));
+} // 生产环境下同源部署无需 CORS；若前后端分离，请在 CORS_ORIGIN 中配置允许的域名
 
 
 
