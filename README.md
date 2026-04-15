@@ -155,6 +155,9 @@ Common error:
 - `429 Too Many Requests`
   - Typically happens when the app repeatedly retries refresh after a `401`.
   - Fix the underlying refresh `401` first.
+- Google login popup stays blank / console shows `transform_layer_library... postMessage`
+  - This is commonly caused by `Cross-Origin-Opener-Policy: same-origin` which breaks OAuth popups (it can null `window.opener`).
+  - Fix: set COOP to `same-origin-allow-popups` (this repo does it via Helmet in `backend/src/server.js`).
 - CSP blocking Google script in production
   - In production, Helmet enables CSP. This backend config allows Google Identity scripts; ensure you are running with `NODE_ENV=production`.
 

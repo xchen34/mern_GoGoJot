@@ -83,6 +83,9 @@ connectDB().then(() => {
 const isDev = process.env.NODE_ENV !== "production";
 
 app.use(helmet({
+    // Google Identity Services uses popups/iframes that communicate with the opener via postMessage.
+    // COOP "same-origin" can null out window.opener for cross-origin popups and break Google login in production.
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
     contentSecurityPolicy: isDev ? false : {
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
