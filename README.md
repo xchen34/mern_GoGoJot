@@ -1,5 +1,8 @@
 # Jotify
 
+Live demo: https://jotify.onrender.com  
+Note: the first load may take ~30 seconds due to cold start (Render), then it should work normally.
+
 A MERN (MongoDB + Express + React + Node.js) note-taking app with:
 - Email/password auth + Google sign-in
 - Guest/demo mode (try core features without creating an account)
