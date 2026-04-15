@@ -1,64 +1,163 @@
-# Jotify - Standard Runbook
+# Jotify
 
-This project follows a standard company-style workflow:
+A MERN (MongoDB + Express + React + Node.js) note-taking app with:
+- Email/password auth + Google sign-in
+- Guest/demo mode (try core features without creating an account)
+- JWT access/refresh token flow (refresh token stored in `httpOnly` cookie)
+- Rate limiting + basic production security headers
 
-1. Development: run frontend + backend separately via dev servers.
-2. Production: build frontend to `dist/`, then serve it from the backend with `NODE_ENV=production`.
+> This repo started from a MERN tutorial baseline and was extended with additional UX improvements, guest mode, and a more secure authentication flow.
 
-Below are the exact steps to follow.
+## Tech Stack
 
-**Prerequisites**
-1. Node.js 18+ (recommended)
-2. MongoDB connection string
+- Frontend: React + Vite, TailwindCSS + DaisyUI, Axios, React Router
+- Backend: Node.js, Express, MongoDB/Mongoose
+- Auth: bcrypt password hashing, JWT access/refresh tokens, Google Identity (ID token verification)
+- Security/ops: Helmet (CSP in prod), CORS allowlist, Upstash rate limiting (optional), Nodemailer (optional)
 
-**Environment**
-1. Backend: create `backend/.env` using `backend/.env.example` as a template.
-2. Frontend (dev/prod split):
-   - `frontend/.env.development` for local dev
-   - `frontend/.env.production` for production builds
-   - Both should define `VITE_GOOGLE_CLIENT_ID`
+## Features
 
-**Development**
-1. Install dependencies:
-   - `npm install`
-2. Run dev servers (frontend + backend):
-   - `npm run dev`
+- Notes CRUD with per-user isolation (a user can only access their own notes)
+- Guest mode:
+  - one-click guest login
+  - guest notes auto-expire (TTL) and guest accounts are limited (to encourage signup)
+- Authentication:
+  - signup/login with bcrypt hashing
+  - Google sign-in (Google Identity Services)
+  - access token (short-lived) + refresh token (long-lived)
+  - refresh token stored in an `httpOnly` cookie; frontend auto-refreshes access tokens via an Axios interceptor
+- Profile:
+  - get/update profile (guests are blocked)
+  - forgot/reset password (email delivery is best-effort; requires SMTP config)
 
-Frontend: `http://localhost:5173`  
-Backend: `http://localhost:5001`
+## Project Structure
 
-**Production (local or server)**
-1. Build frontend:
-   - `npm run build`
-2. Start backend in production mode:
-   - `npm run start`
+```
+.
+├── backend/        # Express API + MongoDB
+└── frontend/       # React (Vite) client
+```
+
+In production, the backend serves the built frontend from `frontend/dist`.
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- A MongoDB connection string (local MongoDB or MongoDB Atlas)
+
+### 1) Install dependencies
+
+From the repo root:
+
+```bash
+npm install
+npm install --prefix backend
+npm install --prefix frontend
+```
+
+### 2) Configure environment variables
+
+Backend:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Edit `backend/.env` and fill at least:
+- `MONGO_URI`
+- `JWT_ACCESS_SECRET`
+- `JWT_REFRESH_SECRET`
+- `CORS_ORIGIN` (recommended for dev: `http://localhost:5173`)
+
+Frontend:
+
+Create one (or both) of the following:
+- `frontend/.env.development` (local dev)
+- `frontend/.env.production` (production build)
+
+Use the example files:
+- `frontend/.env.development.example`
+- `frontend/.env.production.example`
+
+At minimum set:
+- `VITE_GOOGLE_CLIENT_ID`
+
+Notes:
+- The backend also needs `GOOGLE_CLIENT_ID` (used to verify Google ID tokens).
+- Never put `GOOGLE_CLIENT_SECRET` in the frontend. The frontend only needs the Client ID.
+
+### 3) Run in development
+
+```bash
+npm run dev
+```
+
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:5001`
+
+## Production (single server)
+
+Build frontend and start backend in production mode:
+
+```bash
+npm run build
+npm run start
+```
 
 This will:
-- Serve `frontend/dist` from the backend
-- Enable production security behavior
+- build the frontend into `frontend/dist`
+- serve `frontend/dist` from the backend (same origin)
+- enable production security behavior (`NODE_ENV=production`)
 
-**Common Notes**
-1. Google Login requires configuring authorized origins in Google Cloud Console:
-   - `http://localhost:5173` (dev)
-   - Your production domain (prod, HTTPS only)
-2. `NODE_ENV=production` is industry standard. It affects:
-   - Security headers (CSP)
-   - Cookie settings
-   - Performance optimizations
-3. If you change environments, restart the backend to apply changes.
-4. Use separate Google OAuth client IDs for dev and prod to avoid origin confusion.
+## API Overview
 
-**Troubleshooting (Common Issues)**
-1. `401` on `/api/auth/refresh`
-   - Cause: refresh cookie not set
-   - Fix: ensure backend is running, same host (avoid `localhost` vs `127.0.0.1`), and restart after env changes
-2. `429 Too Many Requests`
-   - Cause: repeated refresh attempts after `401`
-   - Fix: resolve the `401` first; the 429 will disappear
-3. Google Login `The given origin is not allowed for the given client ID`
-   - Cause: Google OAuth client does not allow current origin
-   - Fix: add the exact origin you are visiting (scheme + host + port)
-   - Recommended: use separate client IDs for dev vs prod
-4. CSP error blocking Google script
-   - Cause: CSP disallows `https://accounts.google.com`
-   - Fix: ensure CSP allows Google script sources when `NODE_ENV=production`
+Base URL:
+- Dev: `http://localhost:5001/api`
+- Prod: `/api`
+
+Auth (`/api/auth/*`):
+- `POST /guest` — guest login (returns access token + sets refresh cookie)
+- `POST /signup` — email/password signup
+- `POST /login` — email/password login
+- `POST /google` — Google sign-in (expects `{ credential: "<google_id_token>" }`)
+- `POST /refresh` — rotates refresh cookie and returns a new access token
+- `POST /logout` — clears refresh cookie
+- `GET /profile` — current user profile (requires auth)
+- `PUT /profile` — update profile (requires auth)
+- `POST /forgot-password` — request password reset email (best-effort)
+- `POST /reset-password` — reset password using token
+
+Notes (`/api/notes/*`, requires auth):
+- `GET /` — list notes
+- `GET /:id` — get a note
+- `POST /` — create note
+- `PUT /:id` — update note
+- `DELETE /:id` — delete note
+
+## Google Login Setup (OAuth / Google Identity)
+
+In Google Cloud Console, add **Authorized JavaScript origins** for your client ID:
+- Dev: `http://localhost:5173`
+- Prod: your production origin (must be HTTPS)
+
+Common error:
+- `The given origin is not allowed for the given client ID`
+  - Fix: add the exact origin (scheme + host + port) you are visiting.
+
+## Troubleshooting
+
+- `401` on `/api/auth/refresh`
+  - Usually means the refresh cookie wasn’t set/sent.
+  - In dev, avoid mixing `localhost` and `127.0.0.1` (cookies are host-specific).
+  - Ensure `withCredentials: true` is enabled on the frontend Axios client.
+- `429 Too Many Requests`
+  - Typically happens when the app repeatedly retries refresh after a `401`.
+  - Fix the underlying refresh `401` first.
+- CSP blocking Google script in production
+  - In production, Helmet enables CSP. This backend config allows Google Identity scripts; ensure you are running with `NODE_ENV=production`.
+
+## License
+
+Personal project. Add a license if you plan to open-source it.
