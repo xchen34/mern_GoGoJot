@@ -9,8 +9,6 @@ A MERN (MongoDB + Express + React + Node.js) note-taking app with:
 - JWT access/refresh token flow (refresh token stored in `httpOnly` cookie)
 - Rate limiting + basic production security headers
 
-> This repo started from a MERN tutorial baseline and was extended with additional UX improvements, guest mode, and a more secure authentication flow.
-
 ## Tech Stack
 
 - Frontend: React + Vite, TailwindCSS + DaisyUI, Axios, React Router
