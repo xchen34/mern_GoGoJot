@@ -3,6 +3,7 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
+import Note from "../models/Note.js";
 import { signAccessToken, signRefreshToken } from "../config/jwt.js";
 import { z } from "zod"; //用于验证输入数据
 import transporter from "../config/mailer.js";
@@ -71,6 +72,50 @@ const setRefreshCookie = (res, token, req) => {
     });
 }
 
+// ===== DEMO EMAIL PREVIEW HELPERS START =====
+// These helpers support the portfolio-only in-app email preview flow.
+const makeTokenHash = (rawToken) =>
+    crypto.createHash("sha256").update(rawToken).digest("hex");
+
+const buildFrontendUrl = (path) => {
+    const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:5173").replace(/\/$/, "");
+    return `${frontendUrl}${path}`;
+};
+
+const sendVerificationEmail = async (user, rawToken) => {
+    const verifyUrl = buildFrontendUrl(`/verify-email?token=${encodeURIComponent(rawToken)}`);
+
+    await transporter.sendMail({
+        from: process.env.SMTP_FROM || "no-reply@GoGoJot.com",
+        to: user.email,
+        subject: "Verify your GoGoJot email",
+        text: `Welcome to GoGoJot! Verify your email here: ${verifyUrl}\nThis link expires in 24 hours.`,
+        html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
+                <h2>Verify your GoGoJot email</h2>
+                <p>Welcome to GoGoJot. Click the button below to verify your email address.</p>
+                <p>
+                    <a href="${verifyUrl}" style="display:inline-block;padding:12px 18px;background:#111827;color:#ffffff;text-decoration:none;border-radius:8px;">
+                        Verify Email
+                    </a>
+                </p>
+                <p>If the button does not work, paste this URL into your browser:</p>
+                <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+                <p>This link expires in 24 hours.</p>
+            </div>
+        `,
+    });
+};
+
+const issueVerificationToken = async (user) => {
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    user.emailVerificationToken = makeTokenHash(rawToken);
+    user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await user.save();
+    return rawToken;
+};
+// ===== DEMO EMAIL PREVIEW HELPERS END =====
+
 export const guest = async (req, res) => {
     try {
         // 检查环境变量是否加载
@@ -104,25 +149,28 @@ export const signup = async (req, res) => {
     if (existing) return res.status(409).json({ message: "User already exists" });
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = await User.create({ email, passwordHash, name });
+    const user = await User.create({ email, passwordHash, name, isEmailVerified: false });
 
-    // Welcome email should be best-effort and must not block signup success.
+    const rawToken = await issueVerificationToken(user);
+
     try {
-        await transporter.sendMail({
-            from: "no-reply@yourapp.com",
-            to: user.email,
-            subject: "Welcome!",
-            text: "Thanks for signing up.",
-        });
+        await sendVerificationEmail(user, rawToken);
     } catch (mailError) {
-        console.error("Welcome email failed:", mailError);
+        console.error("Verification email failed:", mailError);
+        await User.findByIdAndDelete(user._id);
+        return res.status(500).json({ message: "Unable to send verification email" });
     }
 
-    const payload = { sub: user._id.toString(), typ: "user", email: user.email };
-    const accessToken = signAccessToken(payload);
-    const refreshToken = signRefreshToken(payload);
-    setRefreshCookie(res, refreshToken, req);
-    res.status(201).json({ accessToken, user: { id: user._id, email: user.email, name: user.name } });
+    // ===== DEMO EMAIL PREVIEW RESPONSE START =====
+    // The frontend uses these fields to open the built-in preview pages.
+    const demoMode = process.env.EMAIL_PREVIEW_MODE === "true";
+    res.status(201).json({
+        message: "Account created. Please check your email to verify your account.",
+        verificationRequired: true,
+        demoVerificationToken: demoMode ? rawToken : null,
+        demoVerificationEmail: demoMode ? user.email : null,
+    });
+    // ===== DEMO EMAIL PREVIEW RESPONSE END =====
     } catch (error) {
         console.error("Signup Error:", error);
         res.status(500).json({ message: "Internal Server Error during Signup" });
@@ -137,6 +185,7 @@ export const login = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
     if (!user.passwordHash) return res.status(401).json({ message: "Please sign in with Google" });
+    if (!user.isEmailVerified) return res.status(403).json({ message: "Please verify your email before signing in" });
 
     const passwordMatch = await bcrypt.compare(password, user.passwordHash);
     if (!passwordMatch) return res.status(401).json({ message: "Invalid credentials" });
@@ -178,7 +227,13 @@ export const googleLogin = async (req, res) => {
                 email: payload.email,
                 name: payload.name || payload.given_name || "",
                 passwordHash: null,
+                isEmailVerified: true,
             });
+        } else if (!user.isEmailVerified) {
+            user.isEmailVerified = true;
+            user.emailVerificationToken = null;
+            user.emailVerificationExpires = null;
+            await user.save();
         }
 
         const jwtPayload = { sub: user._id.toString(), typ: "user", email: user.email };
@@ -195,11 +250,80 @@ export const googleLogin = async (req, res) => {
         return res.status(401).json({ message: "Invalid Google credential" });
     }
 };
+export const verifyEmail = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token || typeof token !== "string") {
+            return res.status(400).json({ message: "Verification token is required" });
+        }
+
+        const tokenHash = makeTokenHash(token);
+        const user = await User.findOne({
+            emailVerificationToken: tokenHash,
+            emailVerificationExpires: { $gt: new Date() },
+        });
+
+        if (!user) {
+            return res.status(400).json({ message: "Invalid or expired verification token" });
+        }
+
+        user.isEmailVerified = true;
+        user.emailVerificationToken = null;
+        user.emailVerificationExpires = null;
+        await user.save();
+
+        const payload = { sub: user._id.toString(), typ: "user", email: user.email };
+        const accessToken = signAccessToken(payload);
+        const refreshToken = signRefreshToken(payload);
+        setRefreshCookie(res, refreshToken, req);
+
+        return res.json({
+            message: "Email verified successfully",
+            accessToken,
+            user: { id: user._id, email: user.email, name: user.name || "" },
+        });
+    } catch (error) {
+        console.error("Verify Email Error:", error);
+        return res.status(500).json({ message: "Internal Server Error during Email Verification" });
+    }
+};
+
+export const resendVerification = async (req, res) => {
+    try {
+        const parsed = signupSchema.pick({ email: true }).safeParse(req.body);
+        if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0].message });
+
+        const { email } = parsed.data;
+        const user = await User.findOne({ email });
+        if (!user) return res.json({ message: "If the account exists, a verification email has been sent." });
+        if (user.isEmailVerified) return res.json({ message: "That account is already verified." });
+
+        const rawToken = await issueVerificationToken(user);
+        await sendVerificationEmail(user, rawToken);
+
+        const demoMode = process.env.EMAIL_PREVIEW_MODE === "true";
+        return res.json({
+            message: "If the account exists, a verification email has been sent.",
+            demoVerificationToken: demoMode ? rawToken : null,
+            demoVerificationEmail: demoMode ? user.email : null,
+        });
+    } catch (error) {
+        console.error("Resend Verification Error:", error);
+        return res.status(500).json({ message: "Internal Server Error during Resend Verification" });
+    }
+};
 export const refresh = async (req, res) => {
     const token = req.cookies?.refreshToken;
     if (!token) return res.status(401).json({ message: "Unauthorized" });
     try {
         const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+        if (decoded?.typ === "user") {
+            const userExists = await User.exists({ _id: decoded.sub });
+            if (!userExists) {
+                res.clearCookie("refreshToken");
+                return res.status(401).json({ message: "Unauthorized" });
+            }
+        }
         const payload = { sub: decoded.sub, typ: decoded.typ, email: decoded.email };
         const accessToken = signAccessToken(payload);
         const refreshToken = signRefreshToken(payload);
@@ -212,6 +336,27 @@ export const refresh = async (req, res) => {
 export const logout = async (req, res) => {
     res.clearCookie("refreshToken");
     res.json({ message: "Logged out successfully鸭鸭鸭" });
+};
+
+export const deleteAccount = async (req, res) => {
+    try {
+        if (req.auth.typ === "guest") {
+            return res.status(403).json({ message: "Guests do not have an account to delete" });
+        }
+
+        const userId = req.auth.sub;
+
+        await Promise.all([
+            User.findByIdAndDelete(userId),
+            Note.deleteMany({ ownerId: userId, ownerType: "user" }),
+        ]);
+
+        res.clearCookie("refreshToken");
+        return res.json({ message: "Account deleted successfully" });
+    } catch (error) {
+        console.error("Delete Account Error:", error);
+        return res.status(500).json({ message: "Internal Server Error during Delete Account" });
+    }
 };
 
 
@@ -256,23 +401,40 @@ export const updateProfile = async (req, res) => {
             user.passwordHash = await bcrypt.hash(newPassword, 12);
         }
         //更新mail
+        let emailChanged = false;
         if (email && email !== user.email)
         {
             const existing = await User.findOne({email});
             if (existing) return res.status(409).json({ message: "Email is already in use" });
             user.email = email;
+            user.isEmailVerified = false;
+            emailChanged = true;
         }
         if (name !== undefined) user.name = name; //如果name属性存在则更新 哪怕是空字符串
 
         await user.save();
+
+        let verificationEmailSent = true;
+        if (emailChanged) {
+            try {
+                const rawToken = await issueVerificationToken(user);
+                await sendVerificationEmail(user, rawToken);
+            } catch (mailError) {
+                verificationEmailSent = false;
+                console.error("Profile verification email failed:", mailError);
+            }
+        }
+
         res.json({ message: "Profile updated successfully" ,
             user: {
                 id: user._id,
                 email: user.email,
                 name: user.name || "",
-            }
+            },
+            verificationRequired: emailChanged,
+            verificationEmailSent,
         });
-        
+
     } catch (error) {
         console.error("Update Profile Error:", error);
         res.status(500).json({ message: "Internal Server Error during Update Profile" });
@@ -317,8 +479,8 @@ export const forgotPassword = async (req, res) => {
     const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
 
     try {
-      await transporter.sendMail({
-        from: "no-reply@yourapp.com",
+        await transporter.sendMail({
+        from: process.env.SMTP_FROM || "no-reply@GoGoJot.com",
         to: user.email,
         subject: "Reset your password",
         text: `Click this link to reset your password: ${resetLink}\nThis link expires in 15 minutes.`,
@@ -327,7 +489,15 @@ export const forgotPassword = async (req, res) => {
       console.error("Reset email failed:", mailError);
     }
 
-    return res.json({ message: "If that email exists, a reset link has been sent." });
+    // ===== DEMO EMAIL PREVIEW RESPONSE START =====
+    // Expose the raw reset token only in demo mode so the app can open a local preview.
+    const demoMode = process.env.EMAIL_PREVIEW_MODE === "true";
+    return res.json({
+      message: "If that email exists, a reset link has been sent.",
+      demoResetToken: demoMode ? rawToken : null,
+      demoResetEmail: demoMode ? user.email : null,
+    });
+    // ===== DEMO EMAIL PREVIEW RESPONSE END =====
   } catch (error) {
     console.error("Forgot Password Error:", error);
     return res.status(500).json({ message: "Internal Server Error during Forgot Password" });

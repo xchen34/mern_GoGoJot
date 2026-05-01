@@ -8,7 +8,9 @@ const EntryPage = () => {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    const [resendLoading, setResendLoading] = useState(false);
     const [googleError, setGoogleError] = useState("");
+    const [needsVerification, setNeedsVerification] = useState(false);
     const googleBtnRef = useRef(null);
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -21,6 +23,7 @@ const EntryPage = () => {
         }
 
         setLoading(true);
+        setNeedsVerification(false);
         try {
             const res = await api.post("/auth/login", { email, password });
             localStorage.setItem("accessToken", res.data.accessToken);
@@ -28,9 +31,36 @@ const EntryPage = () => {
             navigate("/", { replace: true });
         } catch (err) {
             console.error(err);
+            if (err?.response?.status === 403) {
+                setNeedsVerification(true);
+            }
             toast.error(err?.response?.data?.message || "Login failed");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleResendVerification = async () => {
+        if (!email.trim()) {
+            toast.error("Enter your email first");
+            return;
+        }
+
+        setResendLoading(true);
+        try {
+            const res = await api.post("/auth/resend-verification", { email });
+            toast.success("If that account exists, a verification email was sent.");
+            if (res.data?.demoVerificationToken) {
+                const query = new URLSearchParams();
+                query.set("email", email);
+                query.set("token", res.data.demoVerificationToken);
+                navigate(`/check-email?${query.toString()}`, { replace: true });
+            }
+        } catch (err) {
+            console.error(err);
+            toast.error(err?.response?.data?.message || "Failed to resend verification email");
+        } finally {
+            setResendLoading(false);
         }
     };
 
@@ -120,7 +150,7 @@ const EntryPage = () => {
             <div className="card bg-base-100 w-full max-w-md shadow">
                 <div className="card-body space-y-4">
                     <div className="text-center">
-                        <h1 className="text-3xl font-bold">Jotify</h1>
+                        <h1 className="text-3xl font-bold">GoGoJot</h1>
                         <p className="text-base-content/70 mt-2">
                             Simple notes, clear mind.
                         </p>
@@ -172,6 +202,22 @@ const EntryPage = () => {
                                 Forgot password?
                             </Link>
                         </div>
+
+                        {needsVerification && (
+                            <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+                                <p className="mb-2 text-warning-content">
+                                    Your email is not verified yet. Check your inbox or resend the verification email.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={handleResendVerification}
+                                    className="btn btn-warning btn-sm w-full"
+                                    disabled={resendLoading}
+                                >
+                                    {resendLoading ? "Resending..." : "Resend Verification Email"}
+                                </button>
+                            </div>
+                        )}
                     </form>
 
                     <div className="divider">OR</div>

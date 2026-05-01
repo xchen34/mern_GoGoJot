@@ -2,8 +2,8 @@ import express from "express";
 import { getAllNotes, getNoteById, createNote, updateNote, deleteNote } from '../controllers/notesControllers.js'
 import requireAuth from "../middleware/auth.js";
 import {
-  guest, signup, login, refresh, logout, getProfile, updateProfile,
-  forgotPassword, resetPassword, googleLogin
+  guest, signup, login, refresh, logout, deleteAccount, getProfile, updateProfile,
+  forgotPassword, resetPassword, googleLogin, verifyEmail, resendVerification
 } from "../controllers/authControllers.js";
 
 //Router()创建一个新的路由对象 是 Express.js 提供的一个功能，允许你创建模块化、可挂载的路由处理器。
@@ -40,8 +40,11 @@ router.post("/guest", guest);
 router.post("/signup", signup);
 router.post("/login", login);
 router.post("/google", googleLogin);
+router.post("/verify-email", verifyEmail);
+router.post("/resend-verification", resendVerification);
 router.post("/refresh", refresh);
 router.post("/logout", logout);
+router.delete("/account", requireAuth, deleteAccount);
 router.get("/profile", requireAuth, getProfile);
 router.put("/profile", requireAuth, updateProfile);
 router.post("/forgot-password", forgotPassword);

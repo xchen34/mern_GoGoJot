@@ -17,6 +17,7 @@ import rateLimiter from "./middleware/rateLimiter.js";
 import { connectDB } from "./config/db.js"
 
 import path from "path";
+import fs from "fs";
 
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
@@ -24,8 +25,8 @@ import helmet from "helmet";
 const __filename = fileURLToPath(import.meta.url);
 const __basedir = path.dirname(__filename);
 
-dotenv.config(); //加载当前工作目录的 .env
-dotenv.config({ path: path.join(__basedir, "../.env") }); //确保从 backend/.env 加载
+// 只加载 backend/.env，避免根目录 .env 和 backend/.env  ერთმან相覆盖
+dotenv.config({ path: path.join(__basedir, "../.env") });
 
 
 // express() creates an instance of an express application 
@@ -190,22 +191,17 @@ app.use("/api/notes", notesRoutes);
 // });
 
 
-//若前后端在同一端口下运行 则不需要cors中间件
-// express.static() - Express内置的静态文件服务中间件
-// 将指定文件夹中的文件直接暴露给客户端访问
-// path.join(__dirname,"../frontend/dist") - 构建文件路径
-// __dirname 是当前文件所在目录（src）
-// "../frontend/dist" 是相对路径
-// 最终指向：dist
-// 实际效果：
-// 当用户访问 http://localhost:5001/ 时，服务器会返回 dist 文件夹中的 index.html
-// 浏览器加载的 CSS、JS 等资源也都从这个文件夹中获取
-// 实现前后端同端口部署，不需要单独启动前端开发服务器
-if (process.env.NODE_ENV === "production") {
-    app.use(express.static(path.join(__dirname, "../frontend/dist"))); //托管前端静态文件  指定一个目录用于提供静态文件服务 这里是前端打包后的dist文件夹
-    app.get("*", (req, res) => {
-        res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
-    }); //处理前端路由刷新问题 访问不存在的路由时返回index.html 让前端路由接管 
+// Serve the built SPA whenever the frontend bundle exists.
+// This keeps client-side routes like /login and /signup working on Render even
+// if NODE_ENV is not set exactly as expected by the hosting platform.
+const frontendDistPath = path.join(__dirname, "../frontend/dist");
+const frontendIndexPath = path.join(frontendDistPath, "index.html");
+
+if (fs.existsSync(frontendIndexPath)) {
+    app.use(express.static(frontendDistPath)); // 托管前端静态文件
+    app.get(/^\/(?!api\/).*/, (req, res) => {
+        res.sendFile(frontendIndexPath);
+    }); // 让前端路由接管非 API 路径
 }
 // if (process.env.NODE_ENV === "production")
 // 这是环境判断，检查当前是否运行在生产环境。

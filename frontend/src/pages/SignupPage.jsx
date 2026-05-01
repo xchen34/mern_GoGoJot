@@ -44,9 +44,17 @@ const SignupPage = () => {
                 name: formData.name || undefined // 如果为空则不发送
             });
 
-            localStorage.setItem("accessToken", res.data.accessToken);
-            toast.success("Account created successfully!");
-            navigate("/", { replace: true });
+            const query = new URLSearchParams();
+            query.set("email", formData.email);
+            if (res.data?.demoVerificationToken) {
+                query.set("token", res.data.demoVerificationToken);
+            }
+
+            toast.success("Account created. Open the demo email to verify your account.");
+            // ===== DEMO EMAIL PREVIEW FLOW START =====
+            // After signup, send users into the in-app email preview instead of a real inbox.
+            navigate(`/check-email?${query.toString()}`, { replace: true });
+            // ===== DEMO EMAIL PREVIEW FLOW END =====
         } catch (err) {
             console.error(err);
             toast.error(err?.response?.data?.message || "Signup failed");
@@ -62,7 +70,7 @@ const SignupPage = () => {
                     <div className="text-center">
                         <h1 className="text-3xl font-bold">Create Account</h1>
                         <p className="text-base-content/70 mt-2">
-                            Join Jotify today
+                            Join GoGoJot today
                         </p>
                     </div>
 

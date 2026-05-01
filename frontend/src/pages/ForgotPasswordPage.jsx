@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../lib/axios";
 
 const ForgotPasswordPage = () => {
+	const navigate = useNavigate();
 	const [email, setEmail] = useState("");
 	const [loading, setLoading] = useState(false);
 
@@ -17,8 +18,17 @@ const ForgotPasswordPage = () => {
 
 		setLoading(true);
 		try {
-			await api.post("/auth/forgot-password", { email });
+			const res = await api.post("/auth/forgot-password", { email });
+			const query = new URLSearchParams();
+			query.set("email", email);
+			if (res.data?.demoResetToken) {
+				query.set("token", res.data.demoResetToken);
+			}
 			toast.success("If that email exists, a reset link has been sent.");
+			// ===== DEMO EMAIL PREVIEW FLOW START =====
+			// Route the user to the built-in reset email preview for portfolio demos.
+			navigate(`/check-reset-email?${query.toString()}`, { replace: true });
+			// ===== DEMO EMAIL PREVIEW FLOW END =====
 		} catch (err) {
 			console.error(err);
 			toast.error(err?.response?.data?.message || "Failed to send reset email");

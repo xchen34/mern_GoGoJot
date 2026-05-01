@@ -1,6 +1,6 @@
-# Jotify
+# GoGoJot
 
-Live demo: https://jotify.onrender.com  
+Live demo: https://GoGoJot.onrender.com  
 Note: the first load may take ~30 seconds due to cold start (Render), then it should work normally.
 
 A MERN (MongoDB + Express + React + Node.js) note-taking app with:
@@ -24,6 +24,7 @@ A MERN (MongoDB + Express + React + Node.js) note-taking app with:
   - guest notes auto-expire (TTL) and guest accounts are limited (to encourage signup)
 - Authentication:
   - signup/login with bcrypt hashing
+  - email verification flow for new accounts
   - Google sign-in (Google Identity Services)
   - access token (short-lived) + refresh token (long-lived)
   - refresh token stored in an `httpOnly` cookie; frontend auto-refreshes access tokens via an Axios interceptor
@@ -71,6 +72,19 @@ Edit `backend/.env` and fill at least:
 - `JWT_ACCESS_SECRET`
 - `JWT_REFRESH_SECRET`
 - `CORS_ORIGIN` (recommended for dev: `http://localhost:5173`)
+- `FRONTEND_URL` (used in password reset and verification links)
+
+If you want a sandbox inbox for portfolio email flows, add SMTP values from a preview provider such as Mailtrap or Ethereal:
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_FROM`
+- `EMAIL_PREVIEW_MODE=true` to show the built-in demo email preview after signup
+
+Note:
+- keep `EMAIL_PREVIEW_MODE=true` for portfolio/demo environments
+- turn it off for real production if you only want inbox-based verification
 
 Frontend:
 
@@ -112,6 +126,13 @@ This will:
 - serve `frontend/dist` from the backend (same origin)
 - enable production security behavior (`NODE_ENV=production`)
 
+Render deployment:
+- deploy the repo as a `Web Service`
+- use the included `render.yaml`, or set:
+  - build command: `npm install && npm run build`
+  - start command: `npm run start`
+- keep the frontend and backend on the same origin so SPA routes like `/login` and `/signup` resolve through the backend fallback
+
 ## API Overview
 
 Base URL:
@@ -120,14 +141,16 @@ Base URL:
 
 Auth (`/api/auth/*`):
 - `POST /guest` — guest login (returns access token + sets refresh cookie)
-- `POST /signup` — email/password signup
+- `POST /signup` — email/password signup and send verification email
+- `POST /verify-email` — verify an account from an email link
+- `POST /resend-verification` — resend the verification email
 - `POST /login` — email/password login
 - `POST /google` — Google sign-in (expects `{ credential: "<google_id_token>" }`)
 - `POST /refresh` — rotates refresh cookie and returns a new access token
 - `POST /logout` — clears refresh cookie
 - `GET /profile` — current user profile (requires auth)
 - `PUT /profile` — update profile (requires auth)
-- `POST /forgot-password` — request password reset email (best-effort)
+- `POST /forgot-password` — request password reset email (best-effort, demo preview supported)
 - `POST /reset-password` — reset password using token
 
 Notes (`/api/notes/*`, requires auth):

@@ -8,6 +8,7 @@ const ProfilePage = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [userData, setUserData] = useState({
         email: "",
         name: ""
@@ -122,13 +123,37 @@ const ProfilePage = () => {
                 newPassword: "",
                 confirmNewPassword: ""
             });
-            
-            toast.success("Profile updated successfully!");
+            if (res.data.verificationRequired) {
+                toast.success("Profile updated. Please verify your new email address.");
+            } else {
+                toast.success("Profile updated successfully!");
+            }
         } catch (err) {
             console.error(err);
             toast.error(err?.response?.data?.message || "Failed to update profile");
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleDeleteAccount = async () => {
+        const confirmed = window.confirm(
+            "This will permanently delete your account and all of your notes. This cannot be undone. Continue?"
+        );
+
+        if (!confirmed) return;
+
+        setDeleting(true);
+        try {
+            await api.delete("/auth/account");
+            localStorage.removeItem("accessToken");
+            toast.success("Account deleted successfully");
+            navigate("/login", { replace: true });
+        } catch (err) {
+            console.error(err);
+            toast.error(err?.response?.data?.message || "Failed to delete account");
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -183,6 +208,21 @@ const ProfilePage = () => {
                             </div>
 
                             <div className="divider"></div>
+
+                            <div className="space-y-4">
+                                <h3 className="text-lg font-semibold text-error">Danger Zone</h3>
+                                <p className="text-sm text-base-content/70">
+                                    Deleting your account will remove your profile and all notes created under this account.
+                                </p>
+                                <button
+                                    type="button"
+                                    className="btn btn-error btn-outline"
+                                    onClick={handleDeleteAccount}
+                                    disabled={saving || deleting}
+                                >
+                                    {deleting ? "Deleting Account..." : "Delete Account"}
+                                </button>
+                            </div>
 
                             {/* 修改密码 */}
                             <div className="space-y-4">

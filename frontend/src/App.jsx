@@ -8,11 +8,20 @@ import SignupPage from './pages/SignupPage';
 import ProfilePage from './pages/ProfilePage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import CheckEmailPage from './pages/CheckEmailPage';
+import EmailPreviewPage from './pages/EmailPreviewPage';
+import CheckResetEmailPage from './pages/CheckResetEmailPage';
+import ResetEmailPreviewPage from './pages/ResetEmailPreviewPage';
+import { decodeJwt } from "./lib/utils";
 
 
 const App = () => {
   useLocation();
-  const hasToken = Boolean(localStorage.getItem("accessToken"));
+  const token = localStorage.getItem("accessToken");
+  const sessionType = decodeJwt(token)?.typ;
+  const hasToken = Boolean(token);
+  const hasRealUserToken = sessionType === "user";
 
   return (
     <div className="relative h-full w-full">
@@ -25,14 +34,21 @@ const App = () => {
         <button className="btn btn-link">Link</button> */}
       <div className="absolute inset-0 -z-10 bg-[radial-gradient(125%_125%_at_50%_10%,#1f2937_0%,#111827_45%,#030712_100%)]" />
       <Routes>
-        <Route path="/login" element={hasToken ? <Navigate to="/" replace /> : <EntryPage />} />
-        <Route path="/signup" element={hasToken ? <Navigate to="/" replace /> : <SignupPage />} />
+        <Route path="/login" element={hasRealUserToken ? <Navigate to="/" replace /> : <EntryPage />} />
+        <Route path="/signup" element={hasRealUserToken ? <Navigate to="/" replace /> : <SignupPage />} />
         <Route path="/" element={hasToken ? <HomePage /> : <Navigate to="/login" replace />} />
         <Route path="/create" element={hasToken ? <CreatePage /> : <Navigate to="/login" replace />} />
         <Route path="/note/:id" element={hasToken ? <NoteDetailPage /> : <Navigate to="/login" replace />} />
         <Route path="/profile" element={hasToken ? <ProfilePage /> : <Navigate to="/login" replace />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        {/* ===== DEMO EMAIL PREVIEW ROUTES START ===== */}
+        <Route path="/check-email" element={<CheckEmailPage />} />
+        <Route path="/email-preview" element={<EmailPreviewPage />} />
+        <Route path="/check-reset-email" element={<CheckResetEmailPage />} />
+        <Route path="/reset-email-preview" element={<ResetEmailPreviewPage />} />
+        {/* ===== DEMO EMAIL PREVIEW ROUTES END ===== */}
       </Routes>
 
     </div>

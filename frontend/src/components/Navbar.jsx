@@ -32,7 +32,7 @@ const Navbar = () => {
     <div className="mx-auto max-w-6xl p-4">
         <div className="flex items-center justify-between">
             <div>
-                <h1 className="text-3xl font-bold text-primary font-mono tracking-tight">Jotify</h1>
+                <h1 className="text-3xl font-bold text-primary font-mono tracking-tight">GoGoJot</h1>
                 <p className="text-sm text-base-content/70">Simple notes, clear mind.</p>
             </div>
             <div className="flex items-center gap-4">

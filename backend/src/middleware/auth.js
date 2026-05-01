@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
+import User from "../models/User.js";
 
-const requireAuth = (req, res, next) => {
+const requireAuth = async (req, res, next) => {
     //获取请求头中的授权信息 Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     const auth = req.headers.authorization || ""; 
    //检查是否以"Bearer "开头(持有者的意思)如果是则跳过前7个字符获取token 
@@ -11,6 +12,12 @@ const requireAuth = (req, res, next) => {
     try{
        //使用密钥验证token的有效性 会把解码后的信息存储在decoded变量中
         const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
+        if (decoded?.typ === "user") {
+            const userExists = await User.exists({ _id: decoded.sub });
+            if (!userExists) {
+                return res.status(401).json({message: "Unauthorized"});
+            }
+        }
         //将解码后的用户信息存储在请求对象的 auth 属性中
         req.auth = { sub: decoded.sub, typ: decoded.typ, email: decoded.email };
         return next();
