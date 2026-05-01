@@ -152,7 +152,7 @@ const EntryPage = () => {
                     <div className="text-center">
                         <h1 className="text-3xl font-bold">GoGoJot</h1>
                         <p className="text-base-content/70 mt-2">
-                            Simple notes, clear mind.
+                           Jot it fast, keep the blast.
                         </p>
                     </div>
 

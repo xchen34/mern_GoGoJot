@@ -33,7 +33,7 @@ const Navbar = () => {
         <div className="flex items-center justify-between">
             <div>
                 <h1 className="text-3xl font-bold text-primary font-mono tracking-tight">GoGoJot</h1>
-                <p className="text-sm text-base-content/70">Simple notes, clear mind.</p>
+                <p className="text-sm text-base-content/70">Jot it fast, keep the blast.</p>
             </div>
             <div className="flex items-center gap-4">
                 <Link to={"/create"} className="btn btn-primary">
