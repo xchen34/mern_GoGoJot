@@ -133,6 +133,27 @@ Render deployment:
   - start command: `npm run start`
 - keep the frontend and backend on the same origin so SPA routes like `/login` and `/signup` resolve through the backend fallback
 
+Vercel + Render deployment:
+- deploy `frontend/` to Vercel
+- deploy `backend/` to Render as a separate Web Service
+- set frontend env:
+  - `VITE_GOOGLE_CLIENT_ID`
+  - `VITE_API_BASE_URL=https://your-backend.onrender.com/api`
+- set backend env:
+  - `MONGO_URI`
+  - `JWT_ACCESS_SECRET`
+  - `JWT_REFRESH_SECRET`
+  - `GOOGLE_CLIENT_ID`
+  - `FRONTEND_URL=https://your-frontend.vercel.app`
+  - `CORS_ORIGIN=https://your-frontend.vercel.app`
+- because the frontend and backend are on different origins, the backend cookie is configured for cross-site use (`SameSite=None; Secure`)
+
+DigitalOcean backend:
+- yes, DigitalOcean can host the backend too
+- use either App Platform or a Droplet
+- the same backend env vars apply
+- if the frontend is still on Vercel, keep `VITE_API_BASE_URL` pointed at the DigitalOcean backend and add the Vercel origin to `CORS_ORIGIN`
+
 ## API Overview
 
 Base URL:

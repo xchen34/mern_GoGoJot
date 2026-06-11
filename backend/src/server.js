@@ -60,6 +60,9 @@ const app = express();  //执行上面创建的express函数，返回一个expre
 const PORT = process.env.PORT || 5001; //process.env.PORT 是环境变量，如果环境变量中没有设置PORT，则使用默认值5001
 const __dirname = path.resolve(); //获取当前文件的目录路径
 
+// 允许在 Render / DigitalOcean / Vercel 这类代理后面正确识别 HTTPS
+app.set("trust proxy", 1);
+
 connectDB().then(() => {
     app.listen(PORT, () => {
         console.log("Server started on PORT:", PORT);

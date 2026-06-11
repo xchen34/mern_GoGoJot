@@ -60,7 +60,8 @@ const shouldSecureCookie = (req) => {
 
 const getSameSitePolicy = (req) => {
     if (isLocalhost(req?.hostname)) return "lax";
-    return process.env.NODE_ENV === "production" ? "strict" : "lax";
+    // 前后端分离部署时（例如 Vercel + Render / DigitalOcean），需要允许跨站 cookie
+    return process.env.NODE_ENV === "production" ? "none" : "lax";
 };
 
 const setRefreshCookie = (res, token, req) => {
