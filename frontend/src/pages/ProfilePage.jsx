@@ -145,7 +145,12 @@ const ProfilePage = () => {
 
         setDeleting(true);
         try {
-            if (window.google?.accounts?.id) {
+            const token = localStorage.getItem("accessToken");
+            const decoded = decodeJwt(token);
+            if (decoded?.email && window.google?.accounts?.id) {
+                await new Promise((resolve) => {
+                    window.google.accounts.id.revoke(decoded.email, () => resolve());
+                });
                 window.google.accounts.id.disableAutoSelect();
             }
             await api.delete("/auth/account");

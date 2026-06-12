@@ -8,10 +8,25 @@ import { decodeJwt } from "../lib/utils";
 const Navbar = () => {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const revokeGoogleGrant = async (token) => {
+    const decoded = decodeJwt(token);
+    if (!decoded?.email || !window.google?.accounts?.id) {
+      return;
+    }
+
+    await new Promise((resolve) => {
+      window.google.accounts.id.revoke(decoded.email, () => resolve());
+    });
+    window.google.accounts.id.disableAutoSelect();
+  };
+
+  const handleLogout = async () => {
     // 删除本地存储的 Access Token 并清理刷新 Token cookie
-    if (window.google?.accounts?.id) {
-      window.google.accounts.id.disableAutoSelect();
+    const token = localStorage.getItem("accessToken");
+    try {
+      await revokeGoogleGrant(token);
+    } catch (error) {
+      console.warn("Google revoke failed during logout:", error);
     }
     localStorage.removeItem("accessToken");
     api.post("/auth/logout").catch(() => {});

@@ -69,9 +69,19 @@ const setRefreshCookie = (res, token, req) => {
         httpOnly: true, //// 关键安全设置：防止前端 JS 代码 (如 XSS 攻击) 访问此 Cookie
         secure: shouldSecureCookie(req),// 仅在生产 + HTTPS 下启用；本地开发禁用
         sameSite: getSameSitePolicy(req),// 开发/本地放宽避免调试卡住
+        path: "/",
         maxAge: 7 * 24 * 60 * 60 * 1000 // cookie有效期7days ms毫秒为单位
     });
 }
+
+const clearRefreshCookie = (res, req) => {
+    res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: shouldSecureCookie(req),
+        sameSite: getSameSitePolicy(req),
+        path: "/",
+    });
+};
 
 // ===== DEMO EMAIL PREVIEW HELPERS START =====
 // These helpers support the portfolio-only in-app email preview flow.
@@ -237,7 +247,13 @@ export const googleLogin = async (req, res) => {
             await user.save();
         }
 
-        const jwtPayload = { sub: user._id.toString(), typ: "user", email: user.email };
+        const jwtPayload = {
+            sub: user._id.toString(),
+            typ: "user",
+            email: user.email,
+            provider: "google",
+            googleSub: payload.sub,
+        };
         const accessToken = signAccessToken(jwtPayload);
         const refreshToken = signRefreshToken(jwtPayload);
         setRefreshCookie(res, refreshToken, req);
@@ -321,7 +337,7 @@ export const refresh = async (req, res) => {
         if (decoded?.typ === "user") {
             const userExists = await User.exists({ _id: decoded.sub });
             if (!userExists) {
-                res.clearCookie("refreshToken");
+                clearRefreshCookie(res, req);
                 return res.status(401).json({ message: "Unauthorized" });
             }
         }
@@ -335,7 +351,7 @@ export const refresh = async (req, res) => {
     }
 };
 export const logout = async (req, res) => {
-    res.clearCookie("refreshToken");
+    clearRefreshCookie(res, req);
     res.json({ message: "Logged out successfully鸭鸭鸭" });
 };
 
@@ -352,7 +368,7 @@ export const deleteAccount = async (req, res) => {
             Note.deleteMany({ ownerId: userId, ownerType: "user" }),
         ]);
 
-        res.clearCookie("refreshToken");
+        clearRefreshCookie(res, req);
         return res.json({ message: "Account deleted successfully" });
     } catch (error) {
         console.error("Delete Account Error:", error);

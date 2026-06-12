@@ -25,8 +25,13 @@ import helmet from "helmet";
 const __filename = fileURLToPath(import.meta.url);
 const __basedir = path.dirname(__filename);
 
-// 只加载 backend/.env，避免根目录 .env 和 backend/.env  ერთმან相覆盖
-dotenv.config({ path: path.join(__basedir, "../.env") });
+// 只加载 backend/.env，保持后端环境变量独立
+const backendEnvPath = path.join(__basedir, "../.env");
+if (fs.existsSync(backendEnvPath)) {
+    dotenv.config({ path: backendEnvPath });
+} else {
+    console.warn("backend/.env not found. Create backend/.env from backend/.env.example before starting the server.");
+}
 
 
 // express() creates an instance of an express application 
