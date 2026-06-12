@@ -168,7 +168,26 @@ const EntryPage = () => {
         }
 
         setGoogleError("");
-        window.google.accounts.id.prompt();
+        window.google.accounts.id.prompt((notification) => {
+            if (notification.isNotDisplayed()) {
+                const reason = notification.getNotDisplayedReason?.();
+                setGoogleError(
+                    reason
+                        ? `Google login was not shown: ${reason}`
+                        : "Google login was not shown by the browser."
+                );
+                return;
+            }
+
+            if (notification.isSkippedMoment?.()) {
+                const reason = notification.getSkippedReason?.();
+                setGoogleError(
+                    reason
+                        ? `Google login was skipped: ${reason}`
+                        : "Google login was skipped by the browser."
+                );
+            }
+        });
     };
 
     return (
