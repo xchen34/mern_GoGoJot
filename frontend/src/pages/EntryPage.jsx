@@ -12,7 +12,7 @@ const EntryPage = () => {
     const [googleError, setGoogleError] = useState("");
     const [needsVerification, setNeedsVerification] = useState(false);
     const googleBtnRef = useRef(null);
-    const googleButtonRenderedRef = useRef(false);
+    const googleInitializedRef = useRef(false);
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
     const handleLogin = async (e) => {
@@ -104,7 +104,7 @@ const EntryPage = () => {
                 return;
             }
 
-            if (googleButtonRenderedRef.current) {
+            if (googleInitializedRef.current) {
                 return;
             }
 
@@ -120,15 +120,10 @@ const EntryPage = () => {
                 window.__gsiInitializedClientId = googleClientId;
             }
 
-            googleBtnRef.current.innerHTML = "";
-            window.google.accounts.id.renderButton(googleBtnRef.current, {
-                theme: "outline",
-                size: "large",
-                shape: "pill",
-                width: 320,
-                text: "continue_with",
-            });
-            googleButtonRenderedRef.current = true;
+            if (googleBtnRef.current) {
+                googleBtnRef.current.innerHTML = "";
+            }
+            googleInitializedRef.current = true;
         };
 
         const scheduleInit = () => {
@@ -162,9 +157,19 @@ const EntryPage = () => {
         document.body.appendChild(script);
 
         return () => {
-            googleButtonRenderedRef.current = false;
+            googleInitializedRef.current = false;
         };
     }, [googleClientId, navigate]);
+
+    const handleGoogleClick = () => {
+        if (!window.google?.accounts?.id) {
+            setGoogleError("Google Sign-In is not ready yet. Please wait a moment and try again.");
+            return;
+        }
+
+        setGoogleError("");
+        window.google.accounts.id.prompt();
+    };
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-base-200">
@@ -244,9 +249,23 @@ const EntryPage = () => {
                     <div className="divider">OR</div>
 
                     <div className="space-y-2">
-                        <div className="flex min-h-[48px] justify-center">
-                            <div ref={googleBtnRef} />
+                        <div className="flex justify-center">
+                            <button
+                                type="button"
+                                onClick={handleGoogleClick}
+                                className="inline-flex w-80 items-center justify-center gap-3 rounded-full border border-gray-300 bg-white px-4 py-2 transition hover:bg-gray-50"
+                            >
+                                <img
+                                    src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                                    alt="Google"
+                                    className="h-5 w-5"
+                                />
+                                <span className="text-sm font-medium text-gray-700">
+                                    Continuer avec Google
+                                </span>
+                            </button>
                         </div>
+                        <div ref={googleBtnRef} className="hidden" />
                         {googleError && (
                             <p className="text-center text-xs text-error">{googleError}</p>
                         )}
