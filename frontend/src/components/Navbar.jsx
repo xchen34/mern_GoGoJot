@@ -10,6 +10,9 @@ const Navbar = () => {
 
   const handleLogout = () => {
     // 删除本地存储的 Access Token 并清理刷新 Token cookie
+    if (window.google?.accounts?.id) {
+      window.google.accounts.id.disableAutoSelect();
+    }
     localStorage.removeItem("accessToken");
     api.post("/auth/logout").catch(() => {});
     toast.success("Logged out successfully");

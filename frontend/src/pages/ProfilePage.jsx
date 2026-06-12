@@ -145,6 +145,9 @@ const ProfilePage = () => {
 
         setDeleting(true);
         try {
+            if (window.google?.accounts?.id) {
+                window.google.accounts.id.disableAutoSelect();
+            }
             await api.delete("/auth/account");
             localStorage.removeItem("accessToken");
             toast.success("Account deleted successfully");

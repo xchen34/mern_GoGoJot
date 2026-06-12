@@ -96,7 +96,6 @@ const EntryPage = () => {
                 toast.error(err?.response?.data?.message || "Google login failed");
             }
         };
-        console.log("googleClientId:", googleClientId);
 
         const initGoogle = () => {
             if (!window.google?.accounts?.id) {
@@ -123,26 +122,37 @@ const EntryPage = () => {
             });
         };
 
+        const scheduleInit = () => {
+            // Wait until the page finishes loading so we avoid layout work while stylesheets are still settling.
+            if (document.readyState !== "complete") {
+                window.addEventListener("load", initGoogle, { once: true });
+                return () => window.removeEventListener("load", initGoogle);
+            }
+
+            const rafId = window.requestAnimationFrame(initGoogle);
+            return () => window.cancelAnimationFrame(rafId);
+        };
+
         if (window.google?.accounts?.id) {
-            initGoogle();
-            return;
+            return scheduleInit();
         }
 
         const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
         if (existingScript) {
-            initGoogle();
-            return;
+            return scheduleInit();
         }
 
         const script = document.createElement("script");
         script.src = "https://accounts.google.com/gsi/client";
         script.async = true;
         script.defer = true;
-        script.onload = initGoogle;
+        script.onload = scheduleInit;
         script.onerror = () => {
             setGoogleError("Failed to load Google script. Check network/ad-blocker and refresh.");
         };
         document.body.appendChild(script);
+
+        return undefined;
     }, [googleClientId, navigate]);
 
     return (
@@ -223,7 +233,7 @@ const EntryPage = () => {
                     <div className="divider">OR</div>
 
                     <div className="space-y-2">
-                        <div className="flex justify-center">
+                        <div className="flex min-h-[48px] justify-center">
                             <div ref={googleBtnRef} />
                         </div>
                         {googleError && (
