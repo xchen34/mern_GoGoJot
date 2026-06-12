@@ -27,7 +27,10 @@ const loginSchema = z.object({
 });
 
 const googleLoginSchema = z.object({
-    credential: z.string().min(20),
+    credential: z.string().min(20).optional(),
+    code: z.string().min(5).optional(),
+}).refine((data) => data.credential || data.code, {
+    message: "Google credential or code is required",
 });
 
 
@@ -38,7 +41,10 @@ const updateProfileSchema = z.object({
     newPassword: z.string().min(8).max(72).optional(),
 });
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const googleClient = new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET
+);
 
 
 //当用户登录或刷新 Token 时，调用此函数把长效的 refreshToken 种在浏览器里。
@@ -221,12 +227,30 @@ export const googleLogin = async (req, res) => {
         const parsed = googleLoginSchema.safeParse(req.body);
         if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0].message });
 
-        const { credential } = parsed.data;
-        const ticket = await googleClient.verifyIdToken({
-            idToken: credential,
-            audience: process.env.GOOGLE_CLIENT_ID,
-        });
-        const payload = ticket.getPayload();
+        let payload = null;
+
+        if (parsed.data.credential) {
+            const ticket = await googleClient.verifyIdToken({
+                idToken: parsed.data.credential,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            payload = ticket.getPayload();
+        } else if (parsed.data.code) {
+            if (!process.env.GOOGLE_CLIENT_SECRET) {
+                return res.status(500).json({ message: "Server configuration error (Missing GOOGLE_CLIENT_SECRET)" });
+            }
+
+            const { tokens } = await googleClient.getToken(parsed.data.code);
+            if (!tokens?.id_token) {
+                return res.status(400).json({ message: "Google authorization code did not return an ID token" });
+            }
+
+            const ticket = await googleClient.verifyIdToken({
+                idToken: tokens.id_token,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            payload = ticket.getPayload();
+        }
 
         if (!payload?.email) {
             return res.status(400).json({ message: "Google account email is missing" });

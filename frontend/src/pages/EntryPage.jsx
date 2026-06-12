@@ -11,7 +11,7 @@ const EntryPage = () => {
     const [resendLoading, setResendLoading] = useState(false);
     const [googleError, setGoogleError] = useState("");
     const [needsVerification, setNeedsVerification] = useState(false);
-    const googleBtnRef = useRef(null);
+    const googleCodeClientRef = useRef(null);
     const googleInitializedRef = useRef(false);
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -84,11 +84,25 @@ const EntryPage = () => {
             return;
         }
 
-        if (!googleBtnRef.current) return;
-
         const handleGoogleResponse = async (response) => {
             try {
-                const res = await api.post("/auth/google", { credential: response.credential });
+                if (response?.error) {
+                    setGoogleError(`Google login failed: ${response.error}`);
+                    return;
+                }
+
+                const payload = response?.code
+                    ? { code: response.code }
+                    : response?.credential
+                        ? { credential: response.credential }
+                        : null;
+
+                if (!payload) {
+                    setGoogleError("Google login did not return a usable response.");
+                    return;
+                }
+
+                const res = await api.post("/auth/google", payload);
                 localStorage.setItem("accessToken", res.data.accessToken);
                 toast.success("Google login successful!");
                 navigate("/", { replace: true });
@@ -108,21 +122,19 @@ const EntryPage = () => {
                 return;
             }
 
-            // React StrictMode runs effects twice in development; initialize GIS once per client id.
-            if (window.__gsiInitializedClientId !== googleClientId) {
-                window.google.accounts.id.initialize({
-                    client_id: googleClientId,
-                    callback: handleGoogleResponse,
-                    auto_select: false,
-                    use_fedcm_for_button: false,
-                    button_auto_select: false,
-                });
-                window.__gsiInitializedClientId = googleClientId;
+            if (!window.google?.accounts?.oauth2?.initCodeClient) {
+                return;
             }
 
-            if (googleBtnRef.current) {
-                googleBtnRef.current.innerHTML = "";
+            if (!googleCodeClientRef.current) {
+                googleCodeClientRef.current = window.google.accounts.oauth2.initCodeClient({
+                    client_id: googleClientId,
+                    scope: "openid email profile",
+                    ux_mode: "popup",
+                    callback: handleGoogleResponse,
+                });
             }
+
             googleInitializedRef.current = true;
         };
 
@@ -162,32 +174,13 @@ const EntryPage = () => {
     }, [googleClientId, navigate]);
 
     const handleGoogleClick = () => {
-        if (!window.google?.accounts?.id) {
+        if (!googleCodeClientRef.current) {
             setGoogleError("Google Sign-In is not ready yet. Please wait a moment and try again.");
             return;
         }
 
         setGoogleError("");
-        window.google.accounts.id.prompt((notification) => {
-            if (notification.isNotDisplayed()) {
-                const reason = notification.getNotDisplayedReason?.();
-                setGoogleError(
-                    reason
-                        ? `Google login was not shown: ${reason}`
-                        : "Google login was not shown by the browser."
-                );
-                return;
-            }
-
-            if (notification.isSkippedMoment?.()) {
-                const reason = notification.getSkippedReason?.();
-                setGoogleError(
-                    reason
-                        ? `Google login was skipped: ${reason}`
-                        : "Google login was skipped by the browser."
-                );
-            }
-        });
+        googleCodeClientRef.current.requestCode();
     };
 
     return (
@@ -284,7 +277,6 @@ const EntryPage = () => {
                                 </span>
                             </button>
                         </div>
-                        <div ref={googleBtnRef} className="hidden" />
                         {googleError && (
                             <p className="text-center text-xs text-error">{googleError}</p>
                         )}
