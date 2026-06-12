@@ -1,12 +1,24 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
+import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import Note from "../models/Note.js";
 import { signAccessToken, signRefreshToken } from "../config/jwt.js";
 import { z } from "zod"; //用于验证输入数据
 import transporter from "../config/mailer.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __basedir = path.dirname(__filename);
+const backendEnvPath = path.join(__basedir, "../../.env");
+
+if (fs.existsSync(backendEnvPath)) {
+    dotenv.config({ path: backendEnvPath });
+}
 
 
 
