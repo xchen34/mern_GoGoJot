@@ -12,8 +12,6 @@ const EntryPage = () => {
     const [googleError, setGoogleError] = useState("");
     const [needsVerification, setNeedsVerification] = useState(false);
     const googleBtnRef = useRef(null);
-    const googleBtnWrapRef = useRef(null);
-    const [googleBtnWidth, setGoogleBtnWidth] = useState(0);
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
     const handleLogin = async (e) => {
@@ -119,16 +117,9 @@ const EntryPage = () => {
                 theme: "outline",
                 size: "large",
                 shape: "pill",
-                width: googleBtnWidth || 360,
+                width: 320,
                 text: "continue_with",
             });
-
-            const renderedButton = googleBtnRef.current.firstElementChild;
-            if (renderedButton) {
-                renderedButton.style.transformOrigin = "center";
-                renderedButton.style.transform = "scale(1, 1.12)";
-                renderedButton.style.display = "inline-block";
-            }
         };
 
         const scheduleInit = () => {
@@ -162,23 +153,7 @@ const EntryPage = () => {
         document.body.appendChild(script);
 
         return undefined;
-    }, [googleClientId, navigate, googleBtnWidth]);
-
-    useEffect(() => {
-        if (!googleBtnWrapRef.current) return;
-
-        const updateWidth = () => {
-            const nextWidth = Math.min(360, Math.max(300, Math.floor(googleBtnWrapRef.current.clientWidth)));
-            setGoogleBtnWidth(nextWidth);
-        };
-
-        updateWidth();
-
-        const observer = new ResizeObserver(updateWidth);
-        observer.observe(googleBtnWrapRef.current);
-
-        return () => observer.disconnect();
-    }, []);
+    }, [googleClientId, navigate]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-base-200">
@@ -258,10 +233,7 @@ const EntryPage = () => {
                     <div className="divider">OR</div>
 
                     <div className="space-y-2">
-                        <div
-                            ref={googleBtnWrapRef}
-                            className="mx-auto flex min-h-[52px] w-full max-w-[360px] justify-center"
-                        >
+                        <div className="flex min-h-[48px] justify-center">
                             <div ref={googleBtnRef} />
                         </div>
                         {googleError && (
@@ -269,11 +241,7 @@ const EntryPage = () => {
                         )}
                     </div>
 
-                    <button
-                        type="button"
-                        className="btn btn-outline mx-auto w-full max-w-[360px] min-h-[52px]"
-                        onClick={handleGuest}
-                    >
+                    <button type="button" className="btn btn-outline w-full" onClick={handleGuest}>
                         Continue as Guest
                     </button>
 

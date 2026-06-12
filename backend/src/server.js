@@ -100,7 +100,7 @@ app.use(helmet({
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
             "script-src": ["'self'", "https://accounts.google.com"],
             "frame-src": ["'self'", "https://accounts.google.com"],
-            "connect-src": ["'self'", "https://accounts.google.com", "https://www.googleapis.com"],
+            "connect-src": ["'self'", "https://accounts.google.com", "https://www.googleapis.com", "https://play.google.com"],
             "img-src": ["'self'", "data:", "https://lh3.googleusercontent.com"],
         },
     },
