@@ -11,7 +11,7 @@ const EntryPage = () => {
     const [resendLoading, setResendLoading] = useState(false);
     const [googleError, setGoogleError] = useState("");
     const [needsVerification, setNeedsVerification] = useState(false);
-    const googleCodeClientRef = useRef(null);
+    const googleBtnRef = useRef(null);
     const googleInitializedRef = useRef(false);
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -86,23 +86,12 @@ const EntryPage = () => {
 
         const handleGoogleResponse = async (response) => {
             try {
-                if (response?.error) {
-                    setGoogleError(`Google login failed: ${response.error}`);
+                if (!response?.credential) {
+                    setGoogleError("Google login did not return a credential.");
                     return;
                 }
 
-                const payload = response?.code
-                    ? { code: response.code }
-                    : response?.credential
-                        ? { credential: response.credential }
-                        : null;
-
-                if (!payload) {
-                    setGoogleError("Google login did not return a usable response.");
-                    return;
-                }
-
-                const res = await api.post("/auth/google", payload);
+                const res = await api.post("/auth/google", { credential: response.credential });
                 localStorage.setItem("accessToken", res.data.accessToken);
                 toast.success("Google login successful!");
                 navigate("/", { replace: true });
@@ -127,16 +116,26 @@ const EntryPage = () => {
                 return;
             }
 
-            if (!window.google?.accounts?.oauth2?.initCodeClient) {
-                return;
+            if (window.__gsiInitializedClientId !== googleClientId) {
+                window.google.accounts.id.initialize({
+                    client_id: googleClientId,
+                    callback: handleGoogleResponse,
+                    auto_select: false,
+                    button_auto_select: false,
+                    use_fedcm_for_button: false,
+                });
+                window.__gsiInitializedClientId = googleClientId;
             }
 
-            if (!googleCodeClientRef.current) {
-                googleCodeClientRef.current = window.google.accounts.oauth2.initCodeClient({
-                    client_id: googleClientId,
-                    scope: "openid email profile",
-                    ux_mode: "popup",
-                    callback: handleGoogleResponse,
+            if (googleBtnRef.current) {
+                googleBtnRef.current.innerHTML = "";
+                window.google.accounts.id.renderButton(googleBtnRef.current, {
+                    theme: "outline",
+                    size: "large",
+                    shape: "pill",
+                    width: 320,
+                    text: "continue_with",
+                    logo_alignment: "left",
                 });
             }
 
@@ -179,13 +178,19 @@ const EntryPage = () => {
     }, [googleClientId, navigate]);
 
     const handleGoogleClick = () => {
-        if (!googleCodeClientRef.current) {
+        if (!googleBtnRef.current) {
             setGoogleError("Google Sign-In is not ready yet. Please wait a moment and try again.");
             return;
         }
 
         setGoogleError("");
-        googleCodeClientRef.current.requestCode();
+        const gsiButton = googleBtnRef.current.querySelector("div[role='button']");
+        if (gsiButton) {
+            gsiButton.click();
+            return;
+        }
+
+        setGoogleError("Google button is not ready yet. Please wait a moment and try again.");
     };
 
     return (
@@ -282,6 +287,7 @@ const EntryPage = () => {
                                 </span>
                             </button>
                         </div>
+                        <div ref={googleBtnRef} className="absolute -left-[9999px] top-0" aria-hidden="true" />
                         {googleError && (
                             <p className="text-center text-xs text-error">{googleError}</p>
                         )}

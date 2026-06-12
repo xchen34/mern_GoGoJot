@@ -1,24 +1,12 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
-import dotenv from "dotenv";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
 import { OAuth2Client } from "google-auth-library";
 import User from "../models/User.js";
 import Note from "../models/Note.js";
 import { signAccessToken, signRefreshToken } from "../config/jwt.js";
 import { z } from "zod"; //用于验证输入数据
 import transporter from "../config/mailer.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __basedir = path.dirname(__filename);
-const backendEnvPath = path.join(__basedir, "../../.env");
-
-if (fs.existsSync(backendEnvPath)) {
-    dotenv.config({ path: backendEnvPath });
-}
 
 
 
@@ -39,10 +27,7 @@ const loginSchema = z.object({
 });
 
 const googleLoginSchema = z.object({
-    credential: z.string().min(20).optional(),
-    code: z.string().min(5).optional(),
-}).refine((data) => data.credential || data.code, {
-    message: "Google credential or code is required",
+    credential: z.string().min(20),
 });
 
 
@@ -54,9 +39,7 @@ const updateProfileSchema = z.object({
 });
 
 const googleClient = new OAuth2Client(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    "postmessage"
+    process.env.GOOGLE_CLIENT_ID
 );
 
 
@@ -240,33 +223,12 @@ export const googleLogin = async (req, res) => {
         const parsed = googleLoginSchema.safeParse(req.body);
         if (!parsed.success) return res.status(400).json({ message: parsed.error.issues[0].message });
 
-        let payload = null;
-
-        if (parsed.data.credential) {
-            const ticket = await googleClient.verifyIdToken({
-                idToken: parsed.data.credential,
-                audience: process.env.GOOGLE_CLIENT_ID,
-            });
-            payload = ticket.getPayload();
-        } else if (parsed.data.code) {
-            if (!process.env.GOOGLE_CLIENT_SECRET) {
-                return res.status(500).json({ message: "Server configuration error (Missing GOOGLE_CLIENT_SECRET)" });
-            }
-
-            const { tokens } = await googleClient.getToken({
-                code: parsed.data.code,
-                redirect_uri: "postmessage",
-            });
-            if (!tokens?.id_token) {
-                return res.status(400).json({ message: "Google authorization code did not return an ID token" });
-            }
-
-            const ticket = await googleClient.verifyIdToken({
-                idToken: tokens.id_token,
-                audience: process.env.GOOGLE_CLIENT_ID,
-            });
-            payload = ticket.getPayload();
-        }
+        const { credential } = parsed.data;
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
 
         if (!payload?.email) {
             return res.status(400).json({ message: "Google account email is missing" });
