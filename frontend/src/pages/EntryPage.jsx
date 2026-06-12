@@ -108,7 +108,12 @@ const EntryPage = () => {
                 navigate("/", { replace: true });
             } catch (err) {
                 console.error(err);
-                toast.error(err?.response?.data?.message || "Google login failed");
+                const message =
+                    err?.response?.data?.message ||
+                    err?.message ||
+                    "Google login failed";
+                setGoogleError(message);
+                toast.error(message);
             }
         };
 

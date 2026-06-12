@@ -43,7 +43,8 @@ const updateProfileSchema = z.object({
 
 const googleClient = new OAuth2Client(
     process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET
+    process.env.GOOGLE_CLIENT_SECRET,
+    "postmessage"
 );
 
 
@@ -240,7 +241,10 @@ export const googleLogin = async (req, res) => {
                 return res.status(500).json({ message: "Server configuration error (Missing GOOGLE_CLIENT_SECRET)" });
             }
 
-            const { tokens } = await googleClient.getToken(parsed.data.code);
+            const { tokens } = await googleClient.getToken({
+                code: parsed.data.code,
+                redirect_uri: "postmessage",
+            });
             if (!tokens?.id_token) {
                 return res.status(400).json({ message: "Google authorization code did not return an ID token" });
             }
@@ -288,7 +292,13 @@ export const googleLogin = async (req, res) => {
         });
     } catch (error) {
         console.error("Google Login Error:", error);
-        return res.status(401).json({ message: "Invalid Google credential" });
+        const googleMessage =
+            error?.response?.data?.error_description ||
+            error?.response?.data?.error ||
+            error?.message;
+        return res.status(401).json({
+            message: googleMessage || "Invalid Google credential",
+        });
     }
 };
 export const verifyEmail = async (req, res) => {
