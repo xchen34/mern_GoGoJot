@@ -10,15 +10,16 @@ const Navbar = () => {
 
   const revokeGoogleGrant = async (token) => {
     const decoded = decodeJwt(token);
-    if (!decoded?.email || !window.google?.accounts?.id) {
-      return;
-    }
+    if (!decoded?.email || !window.google?.accounts?.id) return;
 
     await new Promise((resolve) => {
-      window.google.accounts.id.revoke(decoded.email, () => resolve());
+        window.google.accounts.id.revoke(decoded.email, () => resolve());
     });
+
+    // ✅ 这两行就够了
     window.google.accounts.id.disableAutoSelect();
-  };
+    window.google.accounts.id.cancel(); // 取消任何挂起的 One Tap 提示
+};
 
   const handleLogout = async () => {
     // 删除本地存储的 Access Token 并清理刷新 Token cookie
