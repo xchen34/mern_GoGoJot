@@ -12,6 +12,7 @@ const EntryPage = () => {
     const [googleError, setGoogleError] = useState("");
     const [needsVerification, setNeedsVerification] = useState(false);
     const googleBtnRef = useRef(null);
+    const googleButtonRenderedRef = useRef(false);
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
     const handleLogin = async (e) => {
@@ -103,11 +104,18 @@ const EntryPage = () => {
                 return;
             }
 
+            if (googleButtonRenderedRef.current) {
+                return;
+            }
+
             // React StrictMode runs effects twice in development; initialize GIS once per client id.
             if (window.__gsiInitializedClientId !== googleClientId) {
                 window.google.accounts.id.initialize({
                     client_id: googleClientId,
                     callback: handleGoogleResponse,
+                    auto_select: false,
+                    use_fedcm_for_button: false,
+                    button_auto_select: false,
                 });
                 window.__gsiInitializedClientId = googleClientId;
             }
@@ -120,6 +128,7 @@ const EntryPage = () => {
                 width: 320,
                 text: "continue_with",
             });
+            googleButtonRenderedRef.current = true;
         };
 
         const scheduleInit = () => {
@@ -152,7 +161,9 @@ const EntryPage = () => {
         };
         document.body.appendChild(script);
 
-        return undefined;
+        return () => {
+            googleButtonRenderedRef.current = false;
+        };
     }, [googleClientId, navigate]);
 
     return (
