@@ -29,7 +29,9 @@ export async function getAllNotes(req, res){      //这里没有用到req 所以
     //res.status(200).send("欢迎参加大岛优子和我的婚礼");
     try
     {
-        const notes = await Note.find(ownerFilter(req)).sort({createdAt: -1}); //find() 方法用于查询数据库中的所有文档，并返回一个包含所有匹配文档的数组。  sort({createdAt: -1}) 最近创建的排在最前面
+        const notes = await Note.find(ownerFilter(req))
+            .sort({createdAt: -1})
+            .lean(); // 列表页只读，lean() 可以跳过 Mongoose 文档包装
         res.status(200).json(notes);
     }catch(error)
     {
@@ -46,7 +48,7 @@ export async function  getNoteById(req, res){
         }
         
         //const note = await Note.findById(req.params.id);
-        const note = await Note.findOne({_id: req.params.id, ...ownerFilter(req)}); //确保只能访问自己的笔记
+        const note = await Note.findOne({_id: req.params.id, ...ownerFilter(req)}).lean(); //确保只能访问自己的笔记
         if (!note) return res.status(404).json({message:"Note not found鸭鸭鸭"});
         res.status(200).json(note);
     }catch (error){

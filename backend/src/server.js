@@ -24,6 +24,8 @@ import helmet from "helmet";
 
 const __filename = fileURLToPath(import.meta.url);
 const __basedir = path.dirname(__filename);
+const frontendDistDir = path.resolve(__basedir, "../../frontend/dist");
+const frontendIndexFile = path.join(frontendDistDir, "index.html");
 
 // 只加载 backend/.env，保持后端环境变量独立
 const backendEnvPath = path.join(__basedir, "../.env");
@@ -36,6 +38,7 @@ if (fs.existsSync(backendEnvPath)) {
 
 // express() creates an instance of an express application 
 const app = express();  //执行上面创建的express函数，返回一个express应用程序对象(app object)，通常命名为app
+app.set("trust proxy", 1); // Render/other proxies sit in front of Express, so trust the first proxy hop for req.ip
 //这个app就是我整个web应用的本体。所有服务器功能，配置，路由都通过这个app对象来设置
 //定义路由 使用app.HTTP_METHOD(PATH, HANDLER)来定义路由
 //HTTP_METHOD是HTTP请求方法，如GET，POST，PUT，DELETE等
@@ -63,16 +66,6 @@ const app = express();  //执行上面创建的express函数，返回一个expre
 
 
 const PORT = process.env.PORT || 5001; //process.env.PORT 是环境变量，如果环境变量中没有设置PORT，则使用默认值5001
-const __dirname = path.resolve(); //获取当前文件的目录路径
-
-// 允许在 Render / DigitalOcean / Vercel 这类代理后面正确识别 HTTPS
-app.set("trust proxy", 1);
-
-connectDB().then(() => {
-    app.listen(PORT, () => {
-        console.log("Server started on PORT:", PORT);
-    });
-});
 //middleware 
 // 简单来说，app.use(express.json()) 是一个内置的中间件，它的作用是让你的 Express 服务器能够读懂客户端发送过来的 JSON 数据。
 // 如果不写这一行，当你通过 Postman 或前端发送一个 POST 请求（带 JSON Body）时，后端代码里的 req.body 将会是 undefined。
@@ -137,6 +130,10 @@ if (isDev) {
 
 app.use(express.json());  //this middleware will parse json bodies to allow acces to them in req.body
 
+app.get("/health", (_req, res) => {
+    res.status(200).json({ ok: true });
+});
+
 app.use(rateLimiter);
 
 app.use("/api/auth", notesRoutes); //挂载认证路由中间件 处理/auth开头的路由请求
@@ -199,17 +196,23 @@ app.use("/api/notes", notesRoutes);
 // });
 
 
-// Serve the built SPA whenever the frontend bundle exists.
-// This keeps client-side routes like /login and /signup working on Render even
-// if NODE_ENV is not set exactly as expected by the hosting platform.
-const frontendDistPath = path.join(__dirname, "../frontend/dist");
-const frontendIndexPath = path.join(frontendDistPath, "index.html");
-
-if (fs.existsSync(frontendIndexPath)) {
-    app.use(express.static(frontendDistPath)); // 托管前端静态文件
+//若前后端在同一端口下运行 则不需要cors中间件
+// express.static() - Express内置的静态文件服务中间件
+// 将指定文件夹中的文件直接暴露给客户端访问
+// path.join(__dirname,"../frontend/dist") - 构建文件路径
+// __dirname 是当前文件所在目录（src）
+// "../frontend/dist" 是相对路径
+// 最终指向：dist
+// 实际效果：
+// 当用户访问 http://localhost:5001/ 时，服务器会返回 dist 文件夹中的 index.html
+// 浏览器加载的 CSS、JS 等资源也都从这个文件夹中获取
+// 实现前后端同端口部署，不需要单独启动前端开发服务器
+// 只要构建产物存在就托管，避免某些平台 NODE_ENV 行为差异导致前端资源没被服务。
+if (fs.existsSync(frontendIndexFile)) {
+    app.use(express.static(frontendDistDir)); //托管前端静态文件  指定一个目录用于提供静态文件服务 这里是前端打包后的dist文件夹
     app.get(/^\/(?!api\/).*/, (req, res) => {
-        res.sendFile(frontendIndexPath);
-    }); // 让前端路由接管非 API 路径
+        res.sendFile(frontendIndexFile);
+    }); //处理前端路由刷新问题 访问不存在的路由时返回index.html 让前端路由接管 
 }
 // if (process.env.NODE_ENV === "production")
 // 这是环境判断，检查当前是否运行在生产环境。
@@ -264,6 +267,12 @@ if (fs.existsSync(frontendIndexPath)) {
 // 用户在地址栏输入 /notes/123 或按F5刷新
 // → 浏览器向服务器请求 /notes/123
 // → 服务器上没有这个文件
+
+connectDB().then(() => {
+    app.listen(PORT, () => {
+        console.log("Server started on PORT:", PORT);
+    });
+});
 // → 返回 404 Not Found
 // 场景3：有兜底路由后（✅ 问题解决）
 // 用户刷新 /notes/123

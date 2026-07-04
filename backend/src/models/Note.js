@@ -30,6 +30,7 @@ const noteSchema = new mongoose.Schema({
 
 //guest data expires automatically 
 noteSchema.index({ expiresAt: 1 }, {expiresAfterSeconds: 0});  //设置TTL（time to live）索引 过期时间到达0秒后自动删除文档  1表示升序 从最早到最新 这个不影响过期时间 只影响索引的存储顺序
+noteSchema.index({ ownerId: 1, ownerType: 1, createdAt: -1 }); // 让首页的 owner + createdAt 查询更容易命中索引
 
 const Note = mongoose.model("Note", noteSchema);
 

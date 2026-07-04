@@ -30,6 +30,10 @@ const getRateLimitIdentifier = (req) => {
 
 // 实现具体的业务逻辑。若外部限流服务暂时不可用，则降级放行，避免整站 API 直接 500。
 const rateLimiter = async (req, res, next) => {
+    if (!ratelimit) {
+        return next();
+    }
+
     try{
         const identifier = getRateLimitIdentifier(req);
         const {success} = await ratelimit.limit(identifier);

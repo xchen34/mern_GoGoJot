@@ -1,6 +1,8 @@
 import express from "express";
 import { getAllNotes, getNoteById, createNote, updateNote, deleteNote } from '../controllers/notesControllers.js'
 import requireAuth from "../middleware/auth.js";
+import authRateLimiter from "../middleware/rateLimiter.js";
+import localWriteRateLimiter from "../middleware/localRateLimiter.js";
 import {
   guest, signup, login, refresh, logout, deleteAccount, getProfile, updateProfile,
   forgotPassword, resetPassword, googleLogin, verifyEmail, resendVerification
@@ -36,19 +38,20 @@ const router = express.Router();
 //     res.status(200).json({message:"Deleted:大岛优子和我结婚"})
 // });
 
-router.post("/guest", guest);
-router.post("/signup", signup);
-router.post("/login", login);
-router.post("/google", googleLogin);
-router.post("/verify-email", verifyEmail);
-router.post("/resend-verification", resendVerification);
+<<<<<<< HEAD
+router.post("/guest", authRateLimiter, guest);
+router.post("/signup", authRateLimiter, signup);
+router.post("/login", authRateLimiter, login);
+router.post("/google", authRateLimiter, googleLogin);
+router.post("/verify-email", authRateLimiter, verifyEmail);
+router.post("/resend-verification", authRateLimiter, resendVerification);
 router.post("/refresh", refresh);
-router.post("/logout", logout);
-router.delete("/account", requireAuth, deleteAccount);
+router.post("/logout", authRateLimiter, logout);
+router.delete("/account", requireAuth, authRateLimiter, deleteAccount);
 router.get("/profile", requireAuth, getProfile);
-router.put("/profile", requireAuth, updateProfile);
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
+router.put("/profile", requireAuth, localWriteRateLimiter, updateProfile);
+router.post("/forgot-password", authRateLimiter, forgotPassword);
+router.post("/reset-password", authRateLimiter, resetPassword);
 
 router.use(requireAuth);  //在所有路由中间件中使用身份验证中间件
 
@@ -56,9 +59,9 @@ router.use(requireAuth);  //在所有路由中间件中使用身份验证中间�
 //不能这样写router.get("/", getAllNotes(req, res)); 因为她会导致回调函数立即执行 而不是等请求到了才执行
 router.get("/", getAllNotes);
 router.get("/:id", getNoteById); //注意这里的:id 是一个动态参数 表示笔记的唯一标识符ID 当客户端请求 /api/notes/123 时，123 会被解析为 id 参数的值，可以通过 req.params.id 访问它
-router.post("/", createNote);
-router.put("/:id", updateNote);
-router.delete("/:id", deleteNote);
+router.post("/", localWriteRateLimiter, createNote);
+router.put("/:id", localWriteRateLimiter, updateNote);
+router.delete("/:id", localWriteRateLimiter, deleteNote);
 
 
 
