@@ -38,7 +38,6 @@ const router = express.Router();
 //     res.status(200).json({message:"Deleted:大岛优子和我结婚"})
 // });
 
-<<<<<<< HEAD
 router.post("/guest", authRateLimiter, guest);
 router.post("/signup", authRateLimiter, signup);
 router.post("/login", authRateLimiter, login);
