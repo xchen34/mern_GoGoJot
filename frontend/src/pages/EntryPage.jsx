@@ -3,6 +3,15 @@ import { useEffect, useRef, useState } from "react";
 import api from "../lib/axios";
 import toast from "react-hot-toast";
 
+const GoogleIcon = () => (
+    <svg viewBox="0 0 48 48" aria-hidden="true" className="h-5 w-5">
+        <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303C33.654 32.657 29.231 36 24 36c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.959 3.041l5.657-5.657C34.053 6.053 29.277 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.651-.389-3.917Z" />
+        <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 16.108 19.001 13 24 13c3.059 0 5.842 1.154 7.959 3.041l5.657-5.657C34.053 6.053 29.277 4 24 4 16.318 4 9.656 8.337 6.306 14.691Z" />
+        <path fill="#4CAF50" d="M24 44c5.176 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.145 35.091 26.671 36 24 36c-5.211 0-9.621-3.317-11.283-7.946l-6.522 5.025C9.51 39.556 16.227 44 24 44Z" />
+        <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.07 12.07 0 0 1-4.084 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.651-.389-3.917Z" />
+    </svg>
+);
+
 const EntryPage = () => {
     const navigate = useNavigate(); 
     const [email, setEmail] = useState("");
@@ -277,11 +286,7 @@ const EntryPage = () => {
                                 onClick={handleGoogleClick}
                                 className="inline-flex w-80 items-center justify-center gap-3 rounded-full border border-gray-300 bg-white px-4 py-2 transition hover:bg-gray-50"
                             >
-                                <img
-                                    src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-                                    alt="Google"
-                                    className="h-5 w-5"
-                                />
+                                <GoogleIcon />
                                 <span className="text-sm font-medium text-gray-700">
                                     Continuer avec Google
                                 </span>

@@ -6,7 +6,7 @@ import User from "../models/User.js";
 import Note from "../models/Note.js";
 import { signAccessToken, signRefreshToken } from "../config/jwt.js";
 import { z } from "zod"; //用于验证输入数据
-import transporter from "../config/mailer.js";
+import transporter, { hasSmtpConfig } from "../config/mailer.js";
 
 
 
@@ -85,6 +85,8 @@ const clearRefreshCookie = (res, req) => {
     });
 };
 
+const isEmailPreviewMode = process.env.EMAIL_PREVIEW_MODE === "true";
+
 // ===== DEMO EMAIL PREVIEW HELPERS START =====
 // These helpers support the portfolio-only in-app email preview flow.
 const makeTokenHash = (rawToken) =>
@@ -96,6 +98,14 @@ const buildFrontendUrl = (path) => {
 };
 
 const sendVerificationEmail = async (user, rawToken) => {
+    if (isEmailPreviewMode) {
+        return;
+    }
+
+    if (!hasSmtpConfig || !transporter) {
+        throw new Error("SMTP is not configured");
+    }
+
     const verifyUrl = buildFrontendUrl(`/verify-email?token=${encodeURIComponent(rawToken)}`);
 
     await transporter.sendMail({
@@ -176,12 +186,11 @@ export const signup = async (req, res) => {
 
     // ===== DEMO EMAIL PREVIEW RESPONSE START =====
     // The frontend uses these fields to open the built-in preview pages.
-    const demoMode = process.env.EMAIL_PREVIEW_MODE === "true";
     res.status(201).json({
         message: "Account created. Please check your email to verify your account.",
         verificationRequired: true,
-        demoVerificationToken: demoMode ? rawToken : null,
-        demoVerificationEmail: demoMode ? user.email : null,
+        demoVerificationToken: isEmailPreviewMode ? rawToken : null,
+        demoVerificationEmail: isEmailPreviewMode ? user.email : null,
     });
     // ===== DEMO EMAIL PREVIEW RESPONSE END =====
     } catch (error) {
@@ -326,11 +335,10 @@ export const resendVerification = async (req, res) => {
         const rawToken = await issueVerificationToken(user);
         await sendVerificationEmail(user, rawToken);
 
-        const demoMode = process.env.EMAIL_PREVIEW_MODE === "true";
         return res.json({
             message: "If the account exists, a verification email has been sent.",
-            demoVerificationToken: demoMode ? rawToken : null,
-            demoVerificationEmail: demoMode ? user.email : null,
+            demoVerificationToken: isEmailPreviewMode ? rawToken : null,
+            demoVerificationEmail: isEmailPreviewMode ? user.email : null,
         });
     } catch (error) {
         console.error("Resend Verification Error:", error);
