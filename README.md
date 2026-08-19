@@ -1,6 +1,6 @@
 # GoGoJot
 
-Live demo: https://GoGoJot.onrender.com  
+Live demo: gogojot-production.up.railway.app  
 Note: the first load may take ~30 seconds due to cold start (Render), then it should work normally.
 
 A MERN (MongoDB + Express + React + Node.js) note-taking app with:
